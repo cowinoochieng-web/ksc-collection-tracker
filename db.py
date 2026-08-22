@@ -18,7 +18,9 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS hubs (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
-    county TEXT NOT NULL
+    county TEXT NOT NULL,
+    latitude REAL,
+    longitude REAL
 );
 
 CREATE TABLE IF NOT EXISTS farmers (
@@ -54,6 +56,12 @@ CREATE TABLE IF NOT EXISTS collection_items (
     product TEXT NOT NULL,
     quantity REAL NOT NULL,
     unit TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL
 );
 """
 

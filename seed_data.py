@@ -7,15 +7,25 @@ vegetable farmers, and a few Songa e-mobility vehicles. Numbers are
 illustrative (a workable demo subset), not real KSC records.
 """
 
+from werkzeug.security import generate_password_hash
+
 from db import connect
 
+# Approximate town-center coordinates, so the fleet map has something
+# real to center on (illustrative — not exact hub locations).
 HUBS = [
-    ("Ogembo Hub", "Kisii"),
-    ("Keroka Hub", "Kisii"),
-    ("Nyamira Hub", "Nyamira"),
-    ("Bomet Hub", "Bomet"),
-    ("Narok Hub", "Narok"),
+    # (name, county, lat, lon)
+    ("Ogembo Hub", "Kisii", -0.7591, 34.7591),
+    ("Keroka Hub", "Kisii", -0.7842, 34.9186),
+    ("Nyamira Hub", "Nyamira", -0.5633, 34.9358),
+    ("Bomet Hub", "Bomet", -0.7822, 35.3416),
+    ("Narok Hub", "Narok", -1.0833, 35.8711),
 ]
+
+# Demo-only credentials for showcasing the app — not a real auth system.
+# See README for why this is fine here.
+DEMO_USERNAME = "recruiter"
+DEMO_PASSWORD = "ksc-demo-2026"
 
 FARMERS = [
     # (name, phone, hub_index, value_chain)
@@ -51,8 +61,11 @@ def seed(db_path: str = "ksc_demo.db"):
             return
 
         hub_ids = []
-        for name, county in HUBS:
-            cur.execute("INSERT INTO hubs (name, county) VALUES (?, ?)", (name, county))
+        for name, county, lat, lon in HUBS:
+            cur.execute(
+                "INSERT INTO hubs (name, county, latitude, longitude) VALUES (?, ?, ?, ?)",
+                (name, county, lat, lon),
+            )
             hub_ids.append(cur.lastrowid)
 
         for name, phone, hub_idx, value_chain in FARMERS:
@@ -67,7 +80,13 @@ def seed(db_path: str = "ksc_demo.db"):
                 (plate, device_id, hub_ids[hub_idx]),
             )
 
-        print(f"Seeded {len(HUBS)} hubs, {len(FARMERS)} farmers, {len(VEHICLES)} vehicles.")
+        cur.execute(
+            "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+            (DEMO_USERNAME, generate_password_hash(DEMO_PASSWORD)),
+        )
+
+        print(f"Seeded {len(HUBS)} hubs, {len(FARMERS)} farmers, {len(VEHICLES)} vehicles, "
+              f"1 demo user.")
 
 
 if __name__ == "__main__":

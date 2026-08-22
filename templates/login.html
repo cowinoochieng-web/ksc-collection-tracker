@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign In — KSC Collection Tracker</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #fff;
+  }
+
+  .screen {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 6vw;
+    overflow: hidden;
+  }
+
+  /* One continuous photo, pinned to the viewport regardless of panel
+     content height, with a thin bright accent line marking where the
+     login panel begins — purely decorative, not a seam in the image. */
+  .bg-photo {
+    position: fixed; inset: 0; z-index: 0;
+    background-image: url("https://images.squarespace-cdn.com/content/v1/66c56c66743c830bc1091b12/e064c739-27a2-4771-a663-54ac239ab90a/IMG_7259.jpeg");
+    background-size: cover;
+    background-position: 42% center;
+  }
+  .divider-line {
+    position: fixed; top: 14%; bottom: 14%; left: 64%;
+    width: 4px;
+    background: #ffffff;
+    box-shadow: 0 0 18px rgba(255, 255, 255, 0.6);
+    z-index: 1;
+  }
+  .overlay {
+    position: fixed; inset: 0; z-index: 1;
+    background: linear-gradient(90deg, rgba(6, 14, 9, 0.12) 0%, rgba(6, 14, 9, 0.18) 40%, rgba(6, 14, 9, 0.64) 68%, rgba(6, 14, 9, 0.82) 100%);
+  }
+
+  @media (max-width: 640px) {
+    .divider-line { display: none; }
+    .bg-photo { background-position: 55% center; }
+    .overlay { background: linear-gradient(180deg, rgba(6,14,9,0.35) 0%, rgba(6,14,9,0.55) 45%, rgba(6,14,9,0.85) 100%); }
+  }
+
+  .panel { position: relative; z-index: 2; width: 100%; max-width: 340px; }
+
+  .brand-row { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; }
+  .brand-row .mark {
+    width: 30px; height: 30px; border-radius: 8px; background: rgba(47, 138, 82, 0.9);
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 0.75rem;
+  }
+  .brand-row .name { font-weight: 700; font-size: 0.9rem; }
+
+  .panel h1 { margin: 0 0 30px; font-size: 2.1rem; font-weight: 700; }
+
+  .field { margin-bottom: 18px; }
+  .field label { display: block; font-size: 0.78rem; color: rgba(255,255,255,0.85); margin-bottom: 7px; font-weight: 600; }
+  .field .row {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 9px;
+    padding: 12px 14px;
+  }
+  .field .row input {
+    flex: 1; background: none; border: none; outline: none;
+    color: #1c2620; font-size: 0.92rem; font-family: inherit;
+  }
+  .field .row input::placeholder { color: #8a948e; }
+  .field .row svg { width: 17px; height: 17px; color: #6b756f; flex-shrink: 0; }
+
+  .forgot { display: block; text-align: right; font-size: 0.76rem; color: rgba(255,255,255,0.75); text-decoration: none; margin: -6px 0 24px; }
+  .forgot:hover { color: #fff; text-decoration: underline; }
+
+  button.submit {
+    width: 100%;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    background: #2f8a52; color: white; border: none;
+    padding: 13px 22px; border-radius: 9px; font-weight: 700; font-size: 0.94rem;
+    cursor: pointer;
+  }
+  button.submit:hover { background: #26713f; }
+  button.submit svg { width: 16px; height: 16px; }
+
+  .hint {
+    margin-top: 20px; font-size: 0.75rem; color: rgba(255,255,255,0.75);
+    text-align: center;
+  }
+  .hint strong { color: #fff; }
+
+  .error {
+    background: rgba(179, 38, 30, 0.35); border: 1px solid rgba(255, 137, 122, 0.5);
+    color: #ffcec7; border-radius: 8px; padding: 10px 12px; font-size: 0.84rem; margin-bottom: 18px;
+    text-align: center;
+  }
+
+  @media (max-width: 640px) {
+    .screen { justify-content: center; padding: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="bg-photo"></div>
+  <div class="divider-line"></div>
+  <div class="overlay"></div>
+  <div class="panel">
+    <div class="brand-row">
+      <div class="mark">KS</div>
+      <div class="name">KSC Collection Tracker</div>
+    </div>
+    <h1>Sign In</h1>
+
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+    <form method="post">
+      <div class="field">
+        <label for="username">Username</label>
+        <div class="row">
+          <input type="text" id="username" name="username" placeholder="Enter your username" autocomplete="username" required autofocus>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="row">
+          <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+      </div>
+      <a href="#" class="forgot">Forgot password?</a>
+
+      <button type="submit" class="submit">
+        Sign In
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </form>
+
+    <div class="hint">Demo access — <strong>recruiter</strong> / <strong>ksc-demo-2026</strong></div>
+  </div>
+</div>
+</body>
+</html>

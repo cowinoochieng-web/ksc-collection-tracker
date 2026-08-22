@@ -45,7 +45,7 @@ def start_run(vehicle_id: int, hub_id: int, db_path: str = "ksc_demo.db") -> int
     with connect(db_path) as conn:
         cur = conn.execute(
             "INSERT INTO collection_runs (run_date, vehicle_id, hub_id, start_time, status) "
-            "VALUES (date('now'), ?, ?, datetime('now'), 'in_progress')",
+            "VALUES (date('now', 'localtime'), ?, ?, datetime('now', 'localtime'), 'in_progress')",
             (vehicle_id, hub_id),
         )
         return cur.lastrowid
@@ -127,7 +127,7 @@ def daily_report(run_date: Optional[str] = None, db_path: str = "ksc_demo.db") -
             SELECT h.name AS hub, ci.product, ci.unit,
                    SUM(ci.quantity) AS total_quantity,
                    COUNT(DISTINCT cr.id) AS runs,
-                   SUM(CASE WHEN cr.status = 'sla_breach' THEN 1 ELSE 0 END) AS sla_breaches
+                   COUNT(DISTINCT CASE WHEN cr.status = 'sla_breach' THEN cr.id END) AS sla_breaches
             FROM collection_items ci
             JOIN collection_runs cr ON cr.id = ci.run_id
             JOIN hubs h ON h.id = cr.hub_id

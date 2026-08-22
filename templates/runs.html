@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Collection Runs — KSC Collection Tracker{% endblock %}
+{% block page_title %}Collection Runs{% endblock %}
+{% block page_sub %}Every dispatch, filterable and exportable{% endblock %}
+
+{% block topbar_actions %}
+<a class="btn" href="{{ url_for('export_runs_csv', hub=filters.hub, product=filters.product, status=filters.status, run_date=filters.run_date) }}">
+  Export CSV
+</a>
+{% endblock %}
+
+{% block content %}
+<form class="filter-bar" method="get">
+  <div class="filter-field">
+    <label for="hub">Hub</label>
+    <select name="hub" id="hub">
+      <option value="">All hubs</option>
+      {% for h in options.hubs %}
+      <option value="{{ h }}" {{ 'selected' if filters.hub == h }}>{{ h }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-field">
+    <label for="product">Value chain</label>
+    <select name="product" id="product">
+      <option value="">All products</option>
+      {% for p in options.products %}
+      <option value="{{ p }}" {{ 'selected' if filters.product == p }}>{{ p|capitalize }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-field">
+    <label for="status">Status</label>
+    <select name="status" id="status">
+      <option value="">All statuses</option>
+      {% for s in options.statuses %}
+      <option value="{{ s }}" {{ 'selected' if filters.status == s }}>{{ s.replace('_', ' ')|capitalize }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-field">
+    <label for="run_date">Run date</label>
+    <select name="run_date" id="run_date">
+      <option value="">All dates</option>
+      {% for d in options.dates %}
+      <option value="{{ d }}" {{ 'selected' if filters.run_date == d }}>{{ d }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-actions">
+    <button type="submit" class="btn secondary">Apply filters</button>
+    <a href="{{ url_for('runs') }}" class="btn secondary">Clear</a>
+  </div>
+</form>
+
+<div class="panel">
+  <h2>{{ rows|length }} run{{ '' if rows|length == 1 else 's' }} matching</h2>
+  <div class="table-scroll">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th><th>Date</th><th>Vehicle</th><th>Hub</th><th>Products</th>
+        <th>Items</th><th>Start</th><th>Delivered</th><th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td>{{ r.run_date }}</td>
+        <td>{{ r.vehicle }}</td>
+        <td>{{ r.hub }}</td>
+        <td>{{ r.products or "—" }}</td>
+        <td>{{ r.item_count }}</td>
+        <td>{{ r.start_time }}</td>
+        <td>{{ r.delivery_time or "—" }}</td>
+        <td><span class="pill {{ r.status }}">{{ r.status.replace('_', ' ') }}</span></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9">No runs match these filters.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

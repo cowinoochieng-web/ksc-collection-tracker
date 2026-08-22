@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Fleet Map — KSC Collection Tracker{% endblock %}
+{% block page_title %}Live Fleet Map{% endblock %}
+{% block page_sub %}Vehicle positions via Traccar · refreshes every 8s{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('runs') }}" class="btn secondary">View collection runs</a>
+{% endblock %}
+
+{% block content %}
+<div class="map-layout">
+  <div class="vehicle-list" id="vehicleList"></div>
+  <div class="map-panel">
+    <div id="map"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const hubs = {{ hubs|tojson }};
+  let fleet = {{ fleet|tojson }};
+
+  const map = L.map('map', { zoomControl: true });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(map);
+
+  // Hub markers (fixed)
+  hubs.forEach(h => {
+    if (h.latitude == null) return;
+    L.circleMarker([h.latitude, h.longitude], {
+      radius: 6, color: '#e8f4ec', weight: 2, fillColor: '#1c6b3c', fillOpacity: 1
+    }).addTo(map).bindPopup(`<strong>${h.name}</strong><br>${h.county} County (hub)`);
+  });
+
+  const bounds = hubs.filter(h => h.latitude != null).map(h => [h.latitude, h.longitude]);
+  if (bounds.length) map.fitBounds(bounds, { padding: [40, 40] });
+  else map.setView([-0.85, 35.1], 9);
+
+  const vehicleMarkers = {};
+
+  function statusDotColor(idle) { return idle ? '#e05c4f' : '#39c07a'; }
+
+  function renderVehicleList() {
+    const el = document.getElementById('vehicleList');
+    el.innerHTML = fleet.map((v, i) => `
+      <button class="vehicle-card" data-idx="${i}" onclick="focusVehicle(${i})">
+        <div class="row1">
+          <span>${v.plate}</span>
+          <span class="dot ${v.idle ? 'idle' : 'moving'}"></span>
+        </div>
+        <div class="row2">Home: ${v.home_hub}</div>
+        <div class="row3">
+          <span class="pill ${v.run_status.replace(' ', '_')}">${v.run_status.replace('_', ' ')}</span>
+        </div>
+        <div class="row2" style="margin-top:4px;">
+          ${v.latitude != null ? `${v.latitude}, ${v.longitude} · ${v.fix_time}` : 'No position'}
+          ${v.idle ? ' · <span style="color:#b3261e;font-weight:600;">idle — check vehicle</span>' : ''}
+        </div>
+      </button>
+    `).join('');
+  }
+
+  function renderMarkers() {
+    fleet.forEach((v, i) => {
+      if (v.latitude == null) return;
+      const popup = `<strong>${v.plate}</strong><br>${v.home_hub}<br>${v.run_status.replace('_',' ')}` +
+        (v.idle ? '<br><span style="color:#b3261e;">idle — check vehicle</span>' : '');
+      if (vehicleMarkers[v.plate]) {
+        vehicleMarkers[v.plate].setLatLng([v.latitude, v.longitude]);
+        vehicleMarkers[v.plate].setStyle({ fillColor: statusDotColor(v.idle) });
+        vehicleMarkers[v.plate].setPopupContent(popup);
+      } else {
+        vehicleMarkers[v.plate] = L.circleMarker([v.latitude, v.longitude], {
+          radius: 8, color: '#0e1a14', weight: 2,
+          fillColor: statusDotColor(v.idle), fillOpacity: 0.95
+        }).addTo(map).bindPopup(popup);
+      }
+    });
+  }
+
+  window.focusVehicle = function (idx) {
+    const v = fleet[idx];
+    document.querySelectorAll('.vehicle-card').forEach(c => c.classList.remove('selected'));
+    document.querySelector(`.vehicle-card[data-idx="${idx}"]`).classList.add('selected');
+    if (v.latitude != null) {
+      map.flyTo([v.latitude, v.longitude], 12, { duration: 0.6 });
+      vehicleMarkers[v.plate].openPopup();
+    }
+  };
+
+  renderVehicleList();
+  renderMarkers();
+
+  async function refreshFleet() {
+    try {
+      const res = await fetch('/api/fleet');
+      if (!res.ok) return;
+      fleet = await res.json();
+      renderVehicleList();
+      renderMarkers();
+    } catch (e) { console.error('fleet refresh failed', e); }
+  }
+  setInterval(refreshFleet, 8000);
+</script>
+{% endblock %}

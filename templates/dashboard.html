@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — KSC Collection Tracker{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_sub %}{{ summary.run_date }} · Songa e-mobility first-mile collection{% endblock %}
+
+{% block topbar_actions %}
+<form method="post" action="{{ url_for('simulate') }}">
+  <button type="submit" class="btn secondary">Simulate new day</button>
+</form>
+{% endblock %}
+
+{% block content %}
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="value">{{ summary.total_runs }}</div>
+    <div class="label">Collection runs today</div>
+  </div>
+  <div class="kpi-card">
+    <div class="value">{{ summary.delivered }}</div>
+    <div class="label">Delivered on time</div>
+  </div>
+  <div class="kpi-card {{ 'warn' if summary.sla_breaches else '' }}">
+    <div class="value">{{ summary.sla_breaches }}</div>
+    <div class="label">SLA breaches</div>
+  </div>
+  <div class="kpi-card">
+    <div class="value">{{ summary.vehicles }}</div>
+    <div class="label">Vehicles in fleet</div>
+  </div>
+  <div class="kpi-card">
+    <div class="value">{{ summary.hubs }}</div>
+    <div class="label">Hubs / counties served</div>
+  </div>
+  <div class="kpi-card">
+    <div class="value">{{ summary.farmers }}</div>
+    <div class="label">Registered farmers</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="panel">
+    <h2>Collection runs by hub <span class="sub">today</span></h2>
+    <canvas id="hubChart"></canvas>
+  </div>
+  <div class="panel">
+    <h2>Run outcome mix <span class="sub">today</span></h2>
+    <canvas id="slaChart"></canvas>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Daily collection report <span class="sub">volume by hub &amp; value chain — see the full log under Collection Runs</span></h2>
+  <div class="table-scroll">
+  <table>
+    <thead>
+      <tr><th>Hub</th><th>Product</th><th>Total</th><th>Unit</th><th>Runs</th><th>SLA breaches</th></tr>
+    </thead>
+    <tbody>
+      {% for row in report %}
+      <tr>
+        <td>{{ row.hub }}</td>
+        <td>{{ row.product|capitalize }}</td>
+        <td>{{ "%.1f"|format(row.total_quantity) }}</td>
+        <td>{{ row.unit }}</td>
+        <td>{{ row.runs }}</td>
+        <td>{{ row.sla_breaches }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">No collections recorded for today.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+  const green = '#1c6b3c', amber = '#b8860b', red = '#b3261e';
+
+  const hubData = {{ runs_per_hub|tojson }};
+  new Chart(document.getElementById('hubChart'), {
+    type: 'bar',
+    data: {
+      labels: hubData.map(h => h.hub),
+      datasets: [{ label: 'Runs', data: hubData.map(h => h.runs), backgroundColor: green, borderRadius: 4 }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+
+  const summary = {{ summary|tojson }};
+  new Chart(document.getElementById('slaChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Delivered on time', 'SLA breach', 'In progress'],
+      datasets: [{
+        data: [summary.delivered, summary.sla_breaches, summary.in_progress],
+        backgroundColor: [green, red, amber]
+      }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+  });
+</script>
+{% endblock %}

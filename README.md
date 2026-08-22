@@ -73,6 +73,39 @@ all five vehicles (one deliberately backdated so the SLA-breach path
 is visible, not just the happy path), prints a per-hub / per-value-chain
 report, and writes `daily_report.csv`.
 
+### Web dashboard
+
+The same data and logic are also exposed as a small Flask app
+(`app.py` / `dashboard_data.py` / `templates/`) — the thing to
+actually open and click through:
+
+```bash
+python app.py
+```
+
+Then visit `http://127.0.0.1:5050` and sign in with the demo account
+shown on the login page (**recruiter** / **ksc-demo-2026** — see
+"Auth" below for why this is fine here). Three sections, in a sidebar:
+
+- **Dashboard** — KPI cards (runs today, SLA breaches, fleet size), a
+  runs-per-hub chart, an SLA-outcome donut, and the daily report
+  table. A "Simulate new day" button wipes and re-runs the demo so
+  the SLA-breach and idle-alert paths are easy to show live.
+- **Fleet Map** — a live Leaflet map (OpenStreetMap/CARTO tiles, no
+  API key needed) plotting every hub and vehicle, colour-coded by
+  idle/moving status, alongside a vehicle list that pans the map on
+  click. Polls `/api/fleet` every 8s.
+- **Collection Runs** — the full run log, filterable by hub, value
+  chain, status, and date, with an **Export CSV** button that
+  downloads exactly the filtered view.
+
+**Auth:** one seeded demo account behind a Flask session cookie —
+enough to gate the app behind a login screen for a demo, not a real
+access-control system. There's no real farmer or financial data
+behind it, so building out proper auth (roles, password reset, rate
+limiting) would be effort spent proving the wrong skill for this
+exercise.
+
 ## What I'd build next with real access
 
 - Replace the SQLite layer with ERPNext doctypes and Frappe server
@@ -84,3 +117,6 @@ report, and writes `daily_report.csv`.
   or hub operators without smartphones to confirm a collection or
   delivery — matching KSC's stated use of USSD alongside cloud apps
   for accessibility.
+- Replace the demo login with real auth (role-based access for ops
+  staff vs. hub operators vs. admin) tied into whatever identity
+  provider KSC already uses.

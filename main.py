@@ -35,7 +35,7 @@ def run_demo_day(db_path: str = "ksc_demo.db"):
             # the SLA-breach path firing, not just the happy path.
             with connect(db_path) as conn:
                 conn.execute(
-                    "UPDATE collection_runs SET start_time = datetime('now', '-3 hours') "
+                    "UPDATE collection_runs SET start_time = datetime('now', 'localtime', '-3 hours') "
                     "WHERE id = ?",
                     (run_id,),
                 )
