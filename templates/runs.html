@@ -4,9 +4,14 @@
 {% block page_sub %}Every dispatch, filterable and exportable{% endblock %}
 
 {% block topbar_actions %}
-<a class="btn" href="{{ url_for('export_runs_csv', hub=filters.hub, product=filters.product, status=filters.status, run_date=filters.run_date) }}">
+{% if can_log %}
+<a class="btn" href="{{ url_for('runs_new') }}">+ Log new collection</a>
+{% endif %}
+{% if can_export %}
+<a class="btn secondary" href="{{ url_for('export_runs_csv', hub=filters.hub, product=filters.product, status=filters.status, run_date=filters.run_date) }}">
   Export CSV
 </a>
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -60,7 +65,7 @@
     <thead>
       <tr>
         <th>#</th><th>Date</th><th>Vehicle</th><th>Hub</th><th>Products</th>
-        <th>Items</th><th>Start</th><th>Delivered</th><th>Status</th>
+        <th>Items</th><th>Start</th><th>Delivered</th><th>Status</th><th></th>
       </tr>
     </thead>
     <tbody>
@@ -75,9 +80,16 @@
         <td>{{ r.start_time }}</td>
         <td>{{ r.delivery_time or "—" }}</td>
         <td><span class="pill {{ r.status }}">{{ r.status.replace('_', ' ') }}</span></td>
+        <td class="table-actions">
+          {% if can_log and r.status == 'in_progress' %}
+          <form method="post" action="{{ url_for('runs_complete', run_id=r.id) }}" style="display:inline;">
+            <button type="submit" class="link-btn" style="background:none;border:none;cursor:pointer;">Mark delivered</button>
+          </form>
+          {% endif %}
+        </td>
       </tr>
       {% else %}
-      <tr><td colspan="9">No runs match these filters.</td></tr>
+      <tr><td colspan="10">No runs match these filters.</td></tr>
       {% endfor %}
     </tbody>
   </table>

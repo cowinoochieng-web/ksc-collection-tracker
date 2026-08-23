@@ -23,9 +23,21 @@ HUBS = [
 ]
 
 # Demo-only credentials for showcasing the app — not a real auth system.
-# See README for why this is fine here.
-DEMO_USERNAME = "recruiter"
+# See README for why this is fine here. Sign-in accepts either the
+# username or the email. Three accounts so the role-based access control
+# (see permissions.py) actually has something to demo:
+#   - recruiter: admin, sees every station and every menu.
+#   - ogembo.lead: station_lead, scoped to Ogembo Hub only.
+#   - ogembo.staff: field_staff, can only log collections at Ogembo Hub.
 DEMO_PASSWORD = "ksc-demo-2026"
+DEMO_USERS = [
+    # (username, email, role, home_hub_index or None)
+    ("recruiter", "recruiter@ksc-demo.local", "admin", None),
+    ("ogembo.lead", "ogembo.lead@ksc-demo.local", "station_lead", 0),
+    ("ogembo.staff", "ogembo.staff@ksc-demo.local", "field_staff", 0),
+]
+DEMO_USERNAME = DEMO_USERS[0][0]
+DEMO_EMAIL = DEMO_USERS[0][1]
 
 FARMERS = [
     # (name, phone, hub_index, value_chain)
@@ -80,13 +92,16 @@ def seed(db_path: str = "ksc_demo.db"):
                 (plate, device_id, hub_ids[hub_idx]),
             )
 
-        cur.execute(
-            "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-            (DEMO_USERNAME, generate_password_hash(DEMO_PASSWORD)),
-        )
+        for username, email, role, hub_idx in DEMO_USERS:
+            cur.execute(
+                "INSERT INTO users (username, email, password_hash, role, station_id) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (username, email, generate_password_hash(DEMO_PASSWORD), role,
+                 hub_ids[hub_idx] if hub_idx is not None else None),
+            )
 
         print(f"Seeded {len(HUBS)} hubs, {len(FARMERS)} farmers, {len(VEHICLES)} vehicles, "
-              f"1 demo user.")
+              f"{len(DEMO_USERS)} demo users.")
 
 
 if __name__ == "__main__":

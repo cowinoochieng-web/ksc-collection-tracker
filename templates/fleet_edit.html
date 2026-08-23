@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ vehicle.plate_or_tag }} — KSC Collection Tracker{% endblock %}
+{% block page_title %}Edit vehicle{% endblock %}
+{% block page_sub %}{{ vehicle.plate_or_tag }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('fleet') }}" class="btn secondary">Back to fleet</a>
+{% endblock %}
+
+{% block content %}
+{% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+
+<div class="form-card">
+  <form method="post">
+    <div class="form-grid-2">
+      <div class="form-row">
+        <label for="plate_or_tag">Plate / tag</label>
+        <input type="text" id="plate_or_tag" name="plate_or_tag" value="{{ vehicle.plate_or_tag }}" required>
+      </div>
+      <div class="form-row">
+        <label for="traccar_device_id">Traccar device ID</label>
+        <input type="text" id="traccar_device_id" name="traccar_device_id" value="{{ vehicle.traccar_device_id }}" required>
+      </div>
+    </div>
+    <div class="form-row">
+      <label for="home_hub_id">Home station</label>
+      <select id="home_hub_id" name="home_hub_id" required>
+        {% for s in station_options %}
+        <option value="{{ s.id }}" {{ 'selected' if s.id == vehicle.home_hub_id }}>{{ s.name }} ({{ s.county }})</option>
+        {% endfor %}
+      </select>
+      <div class="hint-text">Reassigning this moves the vehicle to a different station's fleet.</div>
+    </div>
+    <button type="submit" class="btn">Save changes</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Users — KSC Collection Tracker{% endblock %}
+{% block page_title %}Users{% endblock %}
+{% block page_sub %}Create staff accounts and assign them to a station{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('settings_access') }}" class="btn secondary">Access control</a>
+{% endblock %}
+
+{% block content %}
+{% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+
+<div class="form-card">
+  <h2>Add a user</h2>
+  <form method="post">
+    <div class="form-grid-2">
+      <div class="form-row">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required>
+      </div>
+      <div class="form-row">
+        <label for="email">Email <span class="hint-text">(optional)</span></label>
+        <input type="email" id="email" name="email">
+      </div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-row">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+      <div class="form-row">
+        <label for="role">Role</label>
+        <select id="role" name="role" onchange="document.getElementById('station-row').style.display = this.value === 'admin' ? 'none' : 'block'">
+          <option value="field_staff">Field staff — logs collections only</option>
+          <option value="station_lead">Station lead — runs one station</option>
+          <option value="admin">Admin — full system access</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" id="station-row">
+      <label for="station_id">Station</label>
+      <select id="station_id" name="station_id">
+        {% for s in station_options %}
+        <option value="{{ s.id }}">{{ s.name }} ({{ s.county }})</option>
+        {% endfor %}
+      </select>
+      <div class="hint-text">Required for field staff and station leads. Users can be transferred to a different station later by editing them.</div>
+    </div>
+    <button type="submit" class="btn">Create user</button>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>All users <span class="sub">{{ users|length }} accounts</span></h2>
+  <div class="table-scroll">
+  <table>
+    <thead>
+      <tr><th>Username</th><th>Email</th><th>Role</th><th>Station</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.username }}</td>
+        <td>{{ u.email or "—" }}</td>
+        <td><span class="badge-role {{ u.role }}">{{ u.role.replace('_', ' ') }}</span></td>
+        <td>{{ u.station or "— (all stations)" }}</td>
+        <td class="table-actions"><a class="link-btn" href="{{ url_for('user_edit', user_id=u.id) }}">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

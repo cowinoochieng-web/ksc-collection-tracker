@@ -27,11 +27,40 @@
   let fleet = {{ fleet|tojson }};
 
   const map = L.map('map', { zoomControl: true });
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+
+  // Base layers — a Google-Maps-style switcher (top right) between
+  // street, satellite, terrain, and dark. All free, keyless tile
+  // sources (no Google API billing involved).
+  const streets = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    subdomains: 'abcd',
+    subdomains: 'abcd', maxZoom: 20
+  });
+  const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics',
     maxZoom: 19
-  }).addTo(map);
+  });
+  const terrain = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM — Map style: &copy; OpenTopoMap',
+    subdomains: 'abc', maxZoom: 17
+  });
+  const dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: 'abcd', maxZoom: 19
+  });
+
+  // Labels-only overlay, so Satellite can act as a "Hybrid" view when
+  // switched on alongside it — same idea as Google Maps' Hybrid mode.
+  const satelliteLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Labels &copy; Esri', maxZoom: 19
+  });
+
+  streets.addTo(map);
+
+  L.control.layers(
+    { 'Streets': streets, 'Satellite': satellite, 'Terrain': terrain, 'Dark': dark },
+    { 'Labels (on Satellite)': satelliteLabels },
+    { collapsed: true, position: 'topright' }
+  ).addTo(map);
 
   // Hub markers (fixed)
   hubs.forEach(h => {

@@ -61,7 +61,22 @@ CREATE TABLE IF NOT EXISTS collection_items (
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY,
     username TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL
+    email TEXT UNIQUE,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'field_staff'
+        CHECK (role IN ('admin', 'station_lead', 'field_staff')),
+    station_id INTEGER REFERENCES hubs(id)
+);
+
+-- Per-user overrides on top of the role's default menu access. A row
+-- here always wins over the role default for that (user, menu_key)
+-- pair; no row means "use the role default". See permissions.py.
+CREATE TABLE IF NOT EXISTS permissions (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    menu_key TEXT NOT NULL,
+    allowed INTEGER NOT NULL CHECK (allowed IN (0, 1)),
+    UNIQUE(user_id, menu_key)
 );
 """
 

@@ -83,28 +83,71 @@ actually open and click through:
 python app.py
 ```
 
-Then visit `http://127.0.0.1:5050` and sign in with the demo account
-shown on the login page (**recruiter** / **ksc-demo-2026** — see
-"Auth" below for why this is fine here). Three sections, in a sidebar:
+Then visit `http://127.0.0.1:5050` and sign in with one of three demo
+accounts (password for all: **ksc-demo-2026**), each showing a
+different slice of the system:
 
-- **Dashboard** — KPI cards (runs today, SLA breaches, fleet size), a
-  runs-per-hub chart, an SLA-outcome donut, and the daily report
-  table. A "Simulate new day" button wipes and re-runs the demo so
-  the SLA-breach and idle-alert paths are easy to show live.
-- **Fleet Map** — a live Leaflet map (OpenStreetMap/CARTO tiles, no
-  API key needed) plotting every hub and vehicle, colour-coded by
-  idle/moving status, alongside a vehicle list that pans the map on
-  click. Polls `/api/fleet` every 8s.
-- **Collection Runs** — the full run log, filterable by hub, value
-  chain, status, and date, with an **Export CSV** button that
-  downloads exactly the filtered view.
+| Username        | Role          | Scope                        |
+|------------------|---------------|-------------------------------|
+| `recruiter`      | Admin         | Every station, every menu     |
+| `ogembo.lead`    | Station lead  | Ogembo Hub only                |
+| `ogembo.staff`   | Field staff   | Ogembo Hub, log-only           |
 
-**Auth:** one seeded demo account behind a Flask session cookie —
-enough to gate the app behind a login screen for a demo, not a real
-access-control system. There's no real farmer or financial data
-behind it, so building out proper auth (roles, password reset, rate
-limiting) would be effort spent proving the wrong skill for this
-exercise.
+Sign-in accepts either the username or its `@ksc-demo.local` email.
+
+A sun/moon icon in the top right of every page toggles dark mode —
+useful for field staff logging collections in the evening. It's
+theme-variable-driven (`static/style.css`), applies instantly with no
+page reload, remembers your choice in `localStorage`, and defaults to
+your OS's light/dark preference on first visit.
+
+**Pages** (sidebar shown depends on the signed-in user's access — see
+"Access control" below):
+
+- **Dashboard** — KPI cards, a runs-per-hub chart, and an SLA-outcome
+  donut with an explicit colour+shape+count key underneath (not just
+  colour — usable if you can't distinguish red from green). Scoped to
+  one station for non-admins. Admin-only "Simulate new day" button
+  wipes and re-simulates so the SLA-breach / idle-alert paths are easy
+  to show live.
+- **Fleet Map** — a live Leaflet map plotting every hub and vehicle,
+  colour-coded by idle/moving status, with a Google-Maps-style layer
+  switcher (top right) between **Streets**, **Satellite** (Esri World
+  Imagery), **Terrain** (OpenTopoMap), and **Dark**, plus a labels
+  overlay for a satellite/hybrid view — all free, keyless tile
+  sources. Polls `/api/fleet` every 8s.
+- **Collection Runs** — the full run log, filterable and CSV-exportable,
+  plus a **Log new collection** form for entering a real run (pick a
+  vehicle, add one or more farmer + quantity lines) and a **Mark
+  delivered** action that closes it out and runs the SLA check —
+  a genuine data-entry path, not just the auto-simulated demo day.
+- **Fleet Management** — add vehicles and reassign an existing one to
+  a different station (what actually re-maps a vehicle on the Fleet
+  Map).
+- **Stations** — register a new station or edit an existing one's
+  name, county, and map coordinates.
+- **Users** — create staff accounts, assign a role and station, and
+  transfer a user to a different station by editing them.
+- **Settings → Access Control** — every menu and sub-menu in the
+  system as checkboxes, per user. A checked box grants that user
+  access regardless of their role's default; an orange note shows
+  wherever a user's access has been changed from their role default.
+
+**Access control** (`permissions.py`): three roles — **admin** (
+everything), **station_lead** (their station's dashboard/map/runs),
+**field_staff** (collection logging only, no dashboards or reports —
+matching how KSC's actual field/lead/admin split works). Role grants
+are defaults; Settings → Access Control overrides them per user. This
+is enforced server-side on every route (a 403, not just a hidden nav
+link) and non-admins are additionally scoped to their own station's
+data everywhere — the fleet map, dashboard, and run log all filter to
+`station_id` under the hood.
+
+**Auth:** three seeded demo accounts behind a Flask session cookie.
+The access-control *shape* above is real and enforced, but there's no
+password reset, rate limiting, or audit log — this is a portfolio demo
+with no real farmer or financial data behind it, so that layer would
+be effort spent proving the wrong skill for this exercise.
 
 ## What I'd build next with real access
 
@@ -117,6 +160,6 @@ exercise.
   or hub operators without smartphones to confirm a collection or
   delivery — matching KSC's stated use of USSD alongside cloud apps
   for accessibility.
-- Replace the demo login with real auth (role-based access for ops
-  staff vs. hub operators vs. admin) tied into whatever identity
-  provider KSC already uses.
+- Tie the role/permission model already in `permissions.py` to a real
+  identity provider (SSO), and add password reset, rate limiting, and
+  an audit log of who changed what access for whom.

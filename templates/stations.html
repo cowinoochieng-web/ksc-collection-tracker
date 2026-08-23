@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Stations — KSC Collection Tracker{% endblock %}
+{% block page_title %}Stations{% endblock %}
+{% block page_sub %}Register new stations or update existing ones{% endblock %}
+
+{% block content %}
+{% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+
+<div class="form-card">
+  <h2>Register a new station</h2>
+  <form method="post">
+    <div class="form-grid-2">
+      <div class="form-row">
+        <label for="name">Station name</label>
+        <input type="text" id="name" name="name" placeholder="e.g. Sotik Hub" required>
+      </div>
+      <div class="form-row">
+        <label for="county">County</label>
+        <input type="text" id="county" name="county" placeholder="e.g. Bomet" required>
+      </div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-row">
+        <label for="latitude">Latitude <span class="hint-text">(optional — for the map)</span></label>
+        <input type="text" id="latitude" name="latitude" placeholder="-0.7591">
+      </div>
+      <div class="form-row">
+        <label for="longitude">Longitude</label>
+        <input type="text" id="longitude" name="longitude" placeholder="34.7591">
+      </div>
+    </div>
+    <button type="submit" class="btn">Add station</button>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>All stations <span class="sub">{{ stations|length }} registered</span></h2>
+  <div class="table-scroll">
+  <table>
+    <thead>
+      <tr><th>Name</th><th>County</th><th>Vehicles</th><th>Farmers</th><th>Coordinates</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for s in stations %}
+      <tr>
+        <td>{{ s.name }}</td>
+        <td>{{ s.county }}</td>
+        <td>{{ s.vehicle_count }}</td>
+        <td>{{ s.farmer_count }}</td>
+        <td>{% if s.latitude %}{{ s.latitude }}, {{ s.longitude }}{% else %}—{% endif %}</td>
+        <td class="table-actions"><a class="link-btn" href="{{ url_for('station_edit', station_id=s.id) }}">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

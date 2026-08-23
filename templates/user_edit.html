@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ target.username }} — KSC Collection Tracker{% endblock %}
+{% block page_title %}Edit user{% endblock %}
+{% block page_sub %}{{ target.username }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('settings_access', user_id=target.id) }}" class="btn secondary">Edit access</a>
+<a href="{{ url_for('users') }}" class="btn secondary">Back to users</a>
+{% endblock %}
+
+{% block content %}
+{% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+
+<div class="form-card">
+  <form method="post">
+    <div class="form-row">
+      <label>Username</label>
+      <input type="text" value="{{ target.username }}" disabled>
+      <div class="hint-text">Usernames can't be changed once created.</div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-row">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" value="{{ target.email or '' }}">
+      </div>
+      <div class="form-row">
+        <label for="password">New password <span class="hint-text">(leave blank to keep current)</span></label>
+        <input type="password" id="password" name="password">
+      </div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-row">
+        <label for="role">Role</label>
+        <select id="role" name="role" onchange="document.getElementById('station-row').style.display = this.value === 'admin' ? 'none' : 'block'">
+          <option value="field_staff" {{ 'selected' if target.role == 'field_staff' }}>Field staff — logs collections only</option>
+          <option value="station_lead" {{ 'selected' if target.role == 'station_lead' }}>Station lead — runs one station</option>
+          <option value="admin" {{ 'selected' if target.role == 'admin' }}>Admin — full system access</option>
+        </select>
+      </div>
+      <div class="form-row" id="station-row" style="{{ 'display:none' if target.role == 'admin' }}">
+        <label for="station_id">Station <span class="hint-text">(transfer by changing this)</span></label>
+        <select id="station_id" name="station_id">
+          {% for s in station_options %}
+          <option value="{{ s.id }}" {{ 'selected' if s.id == target.station_id }}>{{ s.name }} ({{ s.county }})</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <button type="submit" class="btn">Save changes</button>
+  </form>
+</div>
+{% endblock %}

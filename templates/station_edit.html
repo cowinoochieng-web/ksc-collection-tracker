@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ station.name }} — KSC Collection Tracker{% endblock %}
+{% block page_title %}Edit station{% endblock %}
+{% block page_sub %}{{ station.name }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('stations') }}" class="btn secondary">Back to stations</a>
+{% endblock %}
+
+{% block content %}
+{% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+
+<div class="form-card">
+  <form method="post">
+    <div class="form-grid-2">
+      <div class="form-row">
+        <label for="name">Station name</label>
+        <input type="text" id="name" name="name" value="{{ station.name }}" required>
+      </div>
+      <div class="form-row">
+        <label for="county">County</label>
+        <input type="text" id="county" name="county" value="{{ station.county }}" required>
+      </div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-row">
+        <label for="latitude">Latitude</label>
+        <input type="text" id="latitude" name="latitude" value="{{ station.latitude if station.latitude is not none else '' }}">
+      </div>
+      <div class="form-row">
+        <label for="longitude">Longitude</label>
+        <input type="text" id="longitude" name="longitude" value="{{ station.longitude if station.longitude is not none else '' }}">
+      </div>
+    </div>
+    <button type="submit" class="btn">Save changes</button>
+  </form>
+</div>
+{% endblock %}

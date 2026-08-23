@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Access Control — KSC Collection Tracker{% endblock %}
+{% block page_title %}Access Control{% endblock %}
+{% block page_sub %}Every menu and sub-menu in the system — check a box to grant it, uncheck to revoke{% endblock %}
+
+{% block content %}
+<div class="grid-2">
+  <div class="panel" style="max-width: 260px;">
+    <h2>Users</h2>
+    <div class="perm-user-list">
+      {% for u in all_users %}
+      <a href="{{ url_for('settings_access', user_id=u.id) }}" class="{{ 'active' if u.id == target.id }}">
+        {{ u.username }}
+        <span class="badge-role {{ u.role }}">{{ u.role.replace('_', ' ') }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>
+      {{ target.username }}
+      <span class="sub">role default: <strong>{{ target.role.replace('_', ' ') }}</strong> — orange means it's been changed from that default</span>
+    </h2>
+
+    <form method="post">
+      <input type="hidden" name="user_id" value="{{ target.id }}">
+
+      {% for top_key, label, children in menu_tree %}
+      <div class="perm-group">
+        <label class="perm-top {{ 'overridden' if effective.get(top_key) != (top_key in role_defaults) }}">
+          <input type="checkbox" name="menu_key" value="{{ top_key }}" {{ 'checked' if effective.get(top_key) }}>
+          {{ label }}
+          {% if effective.get(top_key) != (top_key in role_defaults) %}<span class="perm-note">changed from default</span>{% endif %}
+        </label>
+        {% for child_key, child_label in children %}
+        <label class="perm-child {{ 'overridden' if effective.get(child_key) != (child_key in role_defaults) }}">
+          <input type="checkbox" name="menu_key" value="{{ child_key }}" {{ 'checked' if effective.get(child_key) }}>
+          {{ child_label }}
+          {% if effective.get(child_key) != (child_key in role_defaults) %}<span class="perm-note">changed</span>{% endif %}
+        </label>
+        {% endfor %}
+      </div>
+      {% endfor %}
+
+      <button type="submit" class="btn">Save access</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

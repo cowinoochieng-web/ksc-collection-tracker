@@ -4,12 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sign In — KSC Collection Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     color: #fff;
   }
 
@@ -58,24 +61,31 @@
     color: white; display: flex; align-items: center; justify-content: center;
     font-weight: 800; font-size: 0.75rem;
   }
-  .brand-row .name { font-weight: 700; font-size: 0.9rem; }
+  .brand-row .name { font-weight: 800; font-size: 0.9rem; }
 
-  .panel h1 { margin: 0 0 30px; font-size: 2.1rem; font-weight: 700; }
+  .panel h1 { margin: 0 0 30px; font-size: 2.1rem; font-weight: 800; }
 
   .field { margin-bottom: 18px; }
-  .field label { display: block; font-size: 0.78rem; color: rgba(255,255,255,0.85); margin-bottom: 7px; font-weight: 600; }
+  .field label { display: block; font-size: 0.78rem; color: rgba(255,255,255,0.85); margin-bottom: 7px; font-weight: 700; }
   .field .row {
     display: flex; align-items: center; gap: 10px;
     background: rgba(255, 255, 255, 0.92);
     border-radius: 9px;
     padding: 12px 14px;
+    border: 1.5px solid transparent;
   }
+  .field .row:focus-within { border-color: #17171a; background: #fff; }
   .field .row input {
     flex: 1; background: none; border: none; outline: none;
     color: #1c2620; font-size: 0.92rem; font-family: inherit;
   }
   .field .row input::placeholder { color: #8a948e; }
   .field .row svg { width: 17px; height: 17px; color: #6b756f; flex-shrink: 0; }
+  .field .row button.toggle-pw {
+    display: flex; align-items: center; justify-content: center;
+    background: none; border: none; padding: 0; cursor: pointer; color: #6b756f;
+  }
+  .field .row button.toggle-pw:hover { color: #1c2620; }
 
   .forgot { display: block; text-align: right; font-size: 0.76rem; color: rgba(255,255,255,0.75); text-decoration: none; margin: -6px 0 24px; }
   .forgot:hover { color: #fff; text-decoration: underline; }
@@ -83,11 +93,11 @@
   button.submit {
     width: 100%;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    background: #2f8a52; color: white; border: none;
+    background: #17171a; color: white; border: none;
     padding: 13px 22px; border-radius: 9px; font-weight: 700; font-size: 0.94rem;
     cursor: pointer;
   }
-  button.submit:hover { background: #26713f; }
+  button.submit:hover { background: #000; }
   button.submit svg { width: 16px; height: 16px; }
 
   .hint {
@@ -123,9 +133,9 @@
 
     <form method="post">
       <div class="field">
-        <label for="username">Username</label>
+        <label for="identifier">Username or Email</label>
         <div class="row">
-          <input type="text" id="username" name="username" placeholder="Enter your username" autocomplete="username" required autofocus>
+          <input type="text" id="identifier" name="identifier" placeholder="Username or email" autocomplete="username" required autofocus>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         </div>
       </div>
@@ -133,7 +143,9 @@
         <label for="password">Password</label>
         <div class="row">
           <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <button type="button" class="toggle-pw" id="togglePw" aria-label="Show password" aria-pressed="false">
+            <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
         </div>
       </div>
       <a href="#" class="forgot">Forgot password?</a>
@@ -144,8 +156,25 @@
       </button>
     </form>
 
-    <div class="hint">Demo access — <strong>recruiter</strong> / <strong>ksc-demo-2026</strong></div>
+    <div class="hint">
+      Demo access — username <strong>recruiter</strong> (or email <strong>recruiter@ksc-demo.local</strong>) — password <strong>ksc-demo-2026</strong>
+    </div>
   </div>
 </div>
+<script>
+  const pwInput = document.getElementById('password');
+  const toggleBtn = document.getElementById('togglePw');
+  const eyeIcon = document.getElementById('eyeIcon');
+  const eyeOpen = '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>';
+  const eyeOff = '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.4 19.4 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a19.4 19.4 0 0 1-2.35 3.42M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/>';
+
+  toggleBtn.addEventListener('click', () => {
+    const showing = pwInput.type === 'text';
+    pwInput.type = showing ? 'password' : 'text';
+    eyeIcon.innerHTML = showing ? eyeOpen : eyeOff;
+    toggleBtn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+    toggleBtn.setAttribute('aria-pressed', String(!showing));
+  });
+</script>
 </body>
 </html>

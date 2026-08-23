@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Fleet Management — KSC Collection Tracker{% endblock %}
+{% block page_title %}Fleet Management{% endblock %}
+{% block page_sub %}Manage vehicles and map them to a station{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('fleet_map') }}" class="btn secondary">View live map</a>
+{% endblock %}
+
+{% block content %}
+{% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+
+<div class="form-card">
+  <h2>Add a vehicle</h2>
+  <form method="post">
+    <div class="form-grid-2">
+      <div class="form-row">
+        <label for="plate_or_tag">Plate / tag</label>
+        <input type="text" id="plate_or_tag" name="plate_or_tag" placeholder="e.g. KSC-EV-006" required>
+      </div>
+      <div class="form-row">
+        <label for="traccar_device_id">Traccar device ID</label>
+        <input type="text" id="traccar_device_id" name="traccar_device_id" placeholder="e.g. KSC-EV-006" required>
+      </div>
+    </div>
+    <div class="form-row">
+      <label for="home_hub_id">Home station</label>
+      <select id="home_hub_id" name="home_hub_id" required>
+        {% for s in station_options %}
+        <option value="{{ s.id }}">{{ s.name }} ({{ s.county }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn">Add vehicle</button>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>All vehicles <span class="sub">{{ vehicles|length }} in the fleet</span></h2>
+  <div class="table-scroll">
+  <table>
+    <thead>
+      <tr><th>Plate / tag</th><th>Traccar device ID</th><th>Station</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for v in vehicles %}
+      <tr>
+        <td>{{ v.plate_or_tag }}</td>
+        <td>{{ v.traccar_device_id }}</td>
+        <td>{{ v.station }}</td>
+        <td class="table-actions"><a class="link-btn" href="{{ url_for('fleet_edit', vehicle_id=v.id) }}">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

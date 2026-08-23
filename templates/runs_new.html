@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Log New Collection — KSC Collection Tracker{% endblock %}
+{% block page_title %}Log New Collection{% endblock %}
+{% block page_sub %}Enter a real collection run — no simulation involved{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('runs') }}" class="btn secondary">Back to Collection Runs</a>
+{% endblock %}
+
+{% block content %}
+{% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+
+{% if not vehicles %}
+<div class="panel">No vehicles are assigned to your station yet. Ask an admin to add one under Fleet Management.</div>
+{% elif not farmers %}
+<div class="panel">No farmers are registered at your station yet.</div>
+{% else %}
+<div class="form-card" style="max-width: 640px;">
+  <form method="post" id="newRunForm">
+    <div class="form-row">
+      <label for="vehicle_id">Vehicle</label>
+      <select id="vehicle_id" name="vehicle_id" required>
+        {% for v in vehicles %}
+        <option value="{{ v.id }}">{{ v.plate_or_tag }} — {{ v.station }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div id="items">
+      <div class="item-row">
+        <div class="form-row" style="margin-bottom:0;">
+          <label>Farmer</label>
+          <select name="farmer_id" required>
+            <option value="">Select a farmer</option>
+            {% for f in farmers %}
+            <option value="{{ f.id }}">{{ f.name }} — {{ f.value_chain|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-row" style="margin-bottom:0;">
+          <label>Quantity</label>
+          <input type="number" step="0.1" min="0" name="quantity" placeholder="e.g. 12.5" required>
+        </div>
+        <div class="form-row" style="margin-bottom:0;">
+          <label>&nbsp;</label>
+          <div class="hint-text" style="padding-top:8px;">litres (dairy) / kg</div>
+        </div>
+        <div></div>
+      </div>
+    </div>
+
+    <button type="button" class="btn secondary" id="addItem" style="margin-bottom:18px;">+ Add another farmer</button>
+    <br>
+    <button type="submit" class="btn">Log collection run</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('addItem')?.addEventListener('click', () => {
+    const items = document.getElementById('items');
+    const row = items.firstElementChild.cloneNode(true);
+    row.querySelectorAll('select, input').forEach(el => { el.value = ''; });
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'remove-item';
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', () => row.remove());
+    row.lastElementChild.replaceWith(removeBtn);
+    items.appendChild(row);
+  });
+</script>
+{% endblock %}
