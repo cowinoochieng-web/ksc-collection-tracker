@@ -1,7 +1,7 @@
 # First-Mile Collection & Fleet Dispatch Tracker
 
 A small working prototype built to understand the operational problem
-behind Kisii Smart Community's IT & Systems Developer role.
+behind Kisii Smart Community and Songa Mobility.
 
 ## What it models
 
