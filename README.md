@@ -1,8 +1,7 @@
 # First-Mile Collection & Fleet Dispatch Tracker
 
 A small working prototype built to understand the operational problem
-behind Kisii Smart Community's IT & Systems Developer role, before
-applying — rather than just listing tools on a CV.
+behind Kisii Smart Community's IT & Systems Developer role.
 
 ## What it models
 
