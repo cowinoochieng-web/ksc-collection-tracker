@@ -30,10 +30,13 @@
 
   // Base layers — a Google-Maps-style switcher (top right) between
   // street, satellite, terrain, and dark. All free, keyless tile
-  // sources (no Google API billing involved).
-  const streets = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    subdomains: 'abcd', maxZoom: 20
+  // sources (no Google API billing involved). Note: CARTO's basemap
+  // tiles now require a signed-up API key for anonymous use, so
+  // "Streets" uses plain OpenStreetMap tiles instead, and "Dark" is
+  // that same OSM layer with a CSS filter for a dark look.
+  const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    subdomains: 'abc', maxZoom: 19
   });
   const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics',
@@ -43,9 +46,9 @@
     attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM — Map style: &copy; OpenTopoMap',
     subdomains: 'abc', maxZoom: 17
   });
-  const dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    subdomains: 'abcd', maxZoom: 19
+  const dark = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    subdomains: 'abc', maxZoom: 19, className: 'dark-tiles'
   });
 
   // Labels-only overlay, so Satellite can act as a "Hybrid" view when
