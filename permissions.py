@@ -31,6 +31,9 @@ MENU_TREE = [
         ("runs.log", "Log new collection"),
         ("runs.export", "Export CSV"),
     ]),
+    ("farmers", "Farmers", [
+        ("farmers.export", "Export CSV"),
+    ]),
     ("fleet", "Fleet Management", [
         ("fleet.manage", "Add / edit vehicles"),
     ]),
@@ -59,6 +62,7 @@ ROLE_DEFAULTS = {
     "station_lead": {
         "dashboard", "fleet_map",
         "runs", "runs.view", "runs.log", "runs.export",
+        "farmers", "farmers.export",
         "fleet",
     },
     "field_staff": {

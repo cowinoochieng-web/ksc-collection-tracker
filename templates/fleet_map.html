@@ -111,8 +111,12 @@
         vehicleMarkers[v.plate].setStyle({ fillColor: statusDotColor(v.idle) });
         vehicleMarkers[v.plate].setPopupContent(popup);
       } else {
+        // White stroke (not the near-black used elsewhere) so the dot
+        // reads as a crisp halo against every basemap, including the
+        // Dark layer and Satellite's dark forest cover, instead of its
+        // edge disappearing into a dark background.
         vehicleMarkers[v.plate] = L.circleMarker([v.latitude, v.longitude], {
-          radius: 8, color: '#0e1a14', weight: 2,
+          radius: 8, color: '#ffffff', weight: 2,
           fillColor: statusDotColor(v.idle), fillOpacity: 0.95
         }).addTo(map).bindPopup(popup);
       }

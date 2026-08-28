@@ -8,7 +8,7 @@
 <a class="btn" href="{{ url_for('runs_new') }}">+ Log new collection</a>
 {% endif %}
 {% if can_export %}
-<a class="btn secondary" href="{{ url_for('export_runs_csv', hub=filters.hub, product=filters.product, status=filters.status, run_date=filters.run_date) }}">
+<a class="btn secondary" href="{{ url_for('export_runs_csv', hub=filters.hub, product=filters.product, status=filters.status, farmer=filters.farmer, date_from=filters.date_from, date_to=filters.date_to) }}">
   Export CSV
 </a>
 {% endif %}
@@ -17,38 +17,62 @@
 {% block content %}
 <form class="filter-bar" method="get">
   <div class="filter-field">
-    <label for="hub">Hub</label>
-    <select name="hub" id="hub">
-      <option value="">All hubs</option>
-      {% for h in options.hubs %}
-      <option value="{{ h }}" {{ 'selected' if filters.hub == h }}>{{ h }}</option>
-      {% endfor %}
-    </select>
+    <label>Hub</label>
+    <div class="ms-filter" data-all-label="All hubs">
+      <button type="button" class="ms-toggle"><span>All hubs</span></button>
+      <div class="ms-panel">
+        {% for h in options.hubs %}
+        <label class="ms-option"><input type="checkbox" name="hub" value="{{ h }}" data-label="{{ h }}" {{ 'checked' if h in filters.hub }}> {{ h }}</label>
+        {% endfor %}
+      </div>
+    </div>
   </div>
   <div class="filter-field">
-    <label for="product">Value chain</label>
-    <select name="product" id="product">
-      <option value="">All products</option>
-      {% for p in options.products %}
-      <option value="{{ p }}" {{ 'selected' if filters.product == p }}>{{ p|capitalize }}</option>
-      {% endfor %}
-    </select>
+    <label>Value chain <span class="filter-hint">2+ to compare</span></label>
+    <div class="ms-filter" data-all-label="All products">
+      <button type="button" class="ms-toggle"><span>All products</span></button>
+      <div class="ms-panel">
+        {% for p in options.products %}
+        <label class="ms-option"><input type="checkbox" name="product" value="{{ p }}" data-label="{{ p|capitalize }}" {{ 'checked' if p in filters.product }}> {{ p|capitalize }}</label>
+        {% endfor %}
+      </div>
+    </div>
   </div>
   <div class="filter-field">
-    <label for="status">Status</label>
-    <select name="status" id="status">
-      <option value="">All statuses</option>
-      {% for s in options.statuses %}
-      <option value="{{ s }}" {{ 'selected' if filters.status == s }}>{{ s.replace('_', ' ')|capitalize }}</option>
-      {% endfor %}
-    </select>
+    <label>Status</label>
+    <div class="ms-filter" data-all-label="All statuses">
+      <button type="button" class="ms-toggle"><span>All statuses</span></button>
+      <div class="ms-panel">
+        {% for s in options.statuses %}
+        <label class="ms-option"><input type="checkbox" name="status" value="{{ s }}" data-label="{{ s.replace('_', ' ')|capitalize }}" {{ 'checked' if s in filters.status }}> {{ s.replace('_', ' ')|capitalize }}</label>
+        {% endfor %}
+      </div>
+    </div>
   </div>
   <div class="filter-field">
-    <label for="run_date">Run date</label>
-    <select name="run_date" id="run_date">
-      <option value="">All dates</option>
-      {% for d in options.dates %}
-      <option value="{{ d }}" {{ 'selected' if filters.run_date == d }}>{{ d }}</option>
+    <label>Client <span class="filter-hint">2+ to compare</span></label>
+    <div class="ms-filter" data-all-label="All clients">
+      <button type="button" class="ms-toggle"><span>All clients</span></button>
+      <div class="ms-panel">
+        {% for f in options.farmers %}
+        <label class="ms-option"><input type="checkbox" name="farmer" value="{{ f }}" data-label="{{ f }}" {{ 'checked' if f in filters.farmer }}> {{ f }}</label>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="filter-field">
+    <label for="date_from">From</label>
+    <input type="date" name="date_from" id="date_from" value="{{ filters.date_from }}">
+  </div>
+  <div class="filter-field">
+    <label for="date_to">To</label>
+    <input type="date" name="date_to" id="date_to" value="{{ filters.date_to }}">
+  </div>
+  <div class="filter-field">
+    <label for="per_page">Per page</label>
+    <select name="per_page" id="per_page" onchange="this.form.submit()">
+      {% for n in (50, 100, 150) %}
+      <option value="{{ n }}" {{ 'selected' if per_page == n }}>{{ n }}</option>
       {% endfor %}
     </select>
   </div>
@@ -58,13 +82,40 @@
   </div>
 </form>
 
+{% if compare_product %}
+<div class="panel compare-panel">
+  <h2>Comparing products <span class="sub">runs &amp; SLA breaches, same date/hub/status filters above</span></h2>
+  <canvas id="compareProductChart"></canvas>
+  <div class="compare-quantity-key">
+    {% for row in compare_product %}
+    <div class="item"><strong>{{ row.product|capitalize }}</strong>&nbsp;{{ "%.1f"|format(row.quantity) }} {{ row.unit }} collected</div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if compare_farmer %}
+<div class="panel compare-panel">
+  <h2>Comparing clients <span class="sub">runs &amp; SLA breaches, same date/hub/status filters above</span></h2>
+  <canvas id="compareFarmerChart"></canvas>
+  <div class="compare-quantity-key">
+    {% for row in compare_farmer %}
+    <div class="item"><strong>{{ row.farmer }}</strong>&nbsp;{{ "%.1f"|format(row.quantity) }} {{ row.unit }} collected</div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <div class="panel">
-  <h2>{{ rows|length }} run{{ '' if rows|length == 1 else 's' }} matching</h2>
+  <h2>
+    {{ total }} run{{ '' if total == 1 else 's' }} matching
+    {%- if total %} <span class="sub">— showing {{ ((page - 1) * per_page) + 1 }}–{{ [page * per_page, total]|min }}</span>{% endif %}
+  </h2>
   <div class="table-scroll">
   <table>
     <thead>
       <tr>
-        <th>#</th><th>Date</th><th>Vehicle</th><th>Hub</th><th>Products</th>
+        <th>#</th><th>Date</th><th>Vehicle</th><th>Hub</th><th>Products</th><th>Farmers</th>
         <th>Items</th><th>Start</th><th>Delivered</th><th>Status</th><th></th>
       </tr>
     </thead>
@@ -76,6 +127,7 @@
         <td>{{ r.vehicle }}</td>
         <td>{{ r.hub }}</td>
         <td>{{ r.products or "—" }}</td>
+        <td>{{ r.farmers or "—" }}</td>
         <td>{{ r.item_count }}</td>
         <td>{{ r.start_time }}</td>
         <td>{{ r.delivery_time or "—" }}</td>
@@ -89,10 +141,78 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="10">No runs match these filters.</td></tr>
+      <tr><td colspan="11">No runs match these filters.</td></tr>
       {% endfor %}
     </tbody>
   </table>
   </div>
+  {% if total_pages > 1 %}
+  <div class="pagination">
+    {% if page > 1 %}
+    <a class="btn secondary" href="{{ url_for('runs', hub=filters.hub, product=filters.product, status=filters.status, farmer=filters.farmer, date_from=filters.date_from, date_to=filters.date_to, per_page=per_page, page=page-1) }}">&larr; Previous</a>
+    {% else %}
+    <span class="btn secondary disabled">&larr; Previous</span>
+    {% endif %}
+    <span class="pagination-status">Page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}
+    <a class="btn secondary" href="{{ url_for('runs', hub=filters.hub, product=filters.product, status=filters.status, farmer=filters.farmer, date_from=filters.date_from, date_to=filters.date_to, per_page=per_page, page=page+1) }}">Next &rarr;</a>
+    {% else %}
+    <span class="btn secondary disabled">Next &rarr;</span>
+    {% endif %}
+  </div>
+  {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+{% if compare_product or compare_farmer %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+  // Grouped bar comparison chart: one dimension is comparable across
+  // any products/clients regardless of unit (runs, SLA breaches);
+  // quantity (which mixes litres and kg across products) is shown as
+  // a plain readout beside the chart instead of sharing that axis.
+  function themeChartColors() {
+    const s = getComputedStyle(document.documentElement);
+    return { text: s.getPropertyValue('--chart-text').trim(), grid: s.getPropertyValue('--chart-grid').trim() };
+  }
+  Chart.defaults.font.family = "'Inter', -apple-system, sans-serif";
+  Chart.defaults.color = themeChartColors().text;
+
+  function buildCompareChart(canvasId, rows, labelKey) {
+    const el = document.getElementById(canvasId);
+    if (!el) return null;
+    return new Chart(el, {
+      type: 'bar',
+      data: {
+        labels: rows.map(r => r[labelKey]),
+        datasets: [
+          { label: 'Runs', data: rows.map(r => r.runs), backgroundColor: '#2f6fed', borderRadius: 5, maxBarThickness: 46 },
+          { label: 'SLA breaches', data: rows.map(r => r.sla_breaches), backgroundColor: '#ef4444', borderRadius: 5, maxBarThickness: 46 },
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'top', labels: { boxWidth: 10, usePointStyle: true, pointStyle: 'circle' } } },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: themeChartColors().grid } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  const compareProductChart = buildCompareChart('compareProductChart', {{ compare_product|tojson }}, 'product');
+  const compareFarmerChart = buildCompareChart('compareFarmerChart', {{ compare_farmer|tojson }}, 'farmer');
+
+  document.addEventListener('ksc-theme-change', () => {
+    Chart.defaults.color = themeChartColors().text;
+    [compareProductChart, compareFarmerChart].forEach(c => {
+      if (!c) return;
+      c.options.scales.y.grid.color = themeChartColors().grid;
+      c.update();
+    });
+  });
+</script>
+{% endif %}
 {% endblock %}

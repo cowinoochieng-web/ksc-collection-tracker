@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Farmers — KSC Collection Tracker{% endblock %}
+{% block page_title %}Farmers{% endblock %}
+{% block page_sub %}Which client brought what — volume, collections, and last delivery per farmer{% endblock %}
+
+{% block topbar_actions %}
+{% if can_export %}
+<a class="btn secondary" href="{{ url_for('export_farmers_csv', date_from=filters.date_from, date_to=filters.date_to, value_chain=filters.value_chain) }}">
+  Export CSV
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<form class="filter-bar" method="get">
+  <div class="filter-field">
+    <label for="value_chain">Value chain</label>
+    <select name="value_chain" id="value_chain">
+      <option value="">All products</option>
+      {% for p in options.products %}
+      <option value="{{ p }}" {{ 'selected' if filters.value_chain == p }}>{{ p|capitalize }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-field">
+    <label for="date_from">From</label>
+    <input type="date" name="date_from" id="date_from" value="{{ filters.date_from }}">
+  </div>
+  <div class="filter-field">
+    <label for="date_to">To</label>
+    <input type="date" name="date_to" id="date_to" value="{{ filters.date_to }}">
+  </div>
+  <div class="filter-actions">
+    <button type="submit" class="btn secondary">Apply filters</button>
+    <a href="{{ url_for('farmers') }}" class="btn secondary">Clear</a>
+  </div>
+</form>
+
+<div class="panel">
+  <h2>{{ rows|length }} farmer{{ '' if rows|length == 1 else 's' }} with collections
+    {%- if filters.date_from or filters.date_to %} from {{ filters.date_from or "the beginning" }} to {{ filters.date_to or "now" }}{% endif %}</h2>
+  <div class="table-scroll">
+  <table>
+    <thead>
+      <tr>
+        <th>Farmer</th><th>Station</th><th>Value chain</th>
+        <th>Total collected</th><th>Collections</th><th>Last collection</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td>{{ r.station }}</td>
+        <td>{{ r.value_chain|capitalize }}</td>
+        <td>{{ "%.1f"|format(r.total_quantity) }} {{ r.unit }}</td>
+        <td>{{ r.collections }}</td>
+        <td>{{ r.last_collection }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6">No farmer collections match these filters.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

@@ -27,6 +27,7 @@
         'dashboard': '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
         'fleet_map': '<path d="M12 21s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/>',
         'runs': '<path d="M4 6h16M4 12h16M4 18h10"/>',
+        'farmers': '<path d="M7 20h10"/><path d="M10 20c0-5-2-8-6-9"/><path d="M14 20c0-8 3-11 7-11-1 5-3 8-7 8"/>',
         'fleet': '<rect x="1" y="6" width="15" height="12" rx="1"/><path d="M16 10h4l3 3v5h-7"/><circle cx="6" cy="19" r="2"/><circle cx="18.5" cy="19" r="2"/>',
         'stations': '<path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
         'users': '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -95,6 +96,61 @@
     localStorage.setItem('ksc-theme', next);
     document.dispatchEvent(new CustomEvent('ksc-theme-change', { detail: { theme: next } }));
   });
+
+  // Subtle 3D tilt on hover for KPI cards — follows the cursor a little,
+  // never past maxTiltDeg, so it reads as depth rather than a gimmick.
+  (function () {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var maxTiltDeg = 6;
+    document.querySelectorAll('.kpi-card').forEach(function (card) {
+      card.addEventListener('mousemove', function (e) {
+        var rect = card.getBoundingClientRect();
+        var px = (e.clientX - rect.left) / rect.width - 0.5;
+        var py = (e.clientY - rect.top) / rect.height - 0.5;
+        var rotateY = px * maxTiltDeg * 2;
+        var rotateX = -py * maxTiltDeg * 2;
+        card.style.transform = 'perspective(600px) rotateX(' + rotateX + 'deg) rotateY(' + rotateY + 'deg)';
+      });
+      card.addEventListener('mouseleave', function () {
+        card.style.transform = 'perspective(600px) rotateX(0deg) rotateY(0deg)';
+      });
+    });
+  })();
+
+  // Multi-select checkbox filter dropdowns — a button that toggles a
+  // checkbox list, its label reflecting what's checked. Generic: any
+  // filter bar can use this by marking a wrapper `.ms-filter` with a
+  // `.ms-toggle` button and a `.ms-panel` of checkboxes inside.
+  (function () {
+    document.querySelectorAll('.ms-filter').forEach(function (msFilter) {
+      var toggle = msFilter.querySelector('.ms-toggle');
+      var allLabel = msFilter.dataset.allLabel || 'All';
+      var checkboxes = msFilter.querySelectorAll('input[type="checkbox"]');
+      if (!toggle || !checkboxes.length) return;
+
+      function updateLabel() {
+        var checked = msFilter.querySelectorAll('input[type="checkbox"]:checked');
+        if (checked.length === 0) toggle.firstChild.textContent = allLabel;
+        else if (checked.length === 1) toggle.firstChild.textContent = checked[0].dataset.label || checked[0].value;
+        else toggle.firstChild.textContent = checked.length + ' selected';
+      }
+      updateLabel();
+
+      toggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        document.querySelectorAll('.ms-filter.open').forEach(function (other) {
+          if (other !== msFilter) other.classList.remove('open');
+        });
+        msFilter.classList.toggle('open');
+      });
+      checkboxes.forEach(function (cb) { cb.addEventListener('change', updateLabel); });
+    });
+    document.addEventListener('click', function (e) {
+      document.querySelectorAll('.ms-filter.open').forEach(function (msFilter) {
+        if (!msFilter.contains(e.target)) msFilter.classList.remove('open');
+      });
+    });
+  })();
 </script>
 {% block scripts %}{% endblock %}
 </body>

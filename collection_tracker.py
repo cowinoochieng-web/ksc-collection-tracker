@@ -25,7 +25,7 @@ what the IT & Systems Developer role is meant to support:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from db import connect
@@ -89,6 +89,45 @@ def complete_run(run_id: int, db_path: str = "ksc_demo.db") -> str:
         return status
 
 
+def simulate_completed_run(vehicle_id: int, hub_id: int, run_date: str,
+                            items: list[tuple[int, str, float, str]],
+                            db_path: str = "ksc_demo.db", duration_minutes: int = 45) -> tuple[int, str]:
+    """
+    Build one already-closed run stamped to an arbitrary `run_date`, used
+    to generate historical/backfilled demo days. `items` is a list of
+    (farmer_id, product, quantity, unit).
+
+    Regular runs (start_run/complete_run) check SLA against real elapsed
+    wall-clock time, which only makes sense for a run that's actually
+    happening now. A backdated run needs its own synthetic duration for
+    that check instead — otherwise every historical day would read as an
+    SLA breach purely because real time has passed since its fake start.
+    """
+    start = f"{run_date} 08:00:00"
+    with connect(db_path) as conn:
+        cur = conn.execute(
+            "INSERT INTO collection_runs (run_date, vehicle_id, hub_id, start_time, status) "
+            "VALUES (?, ?, ?, ?, 'in_progress')",
+            (run_date, vehicle_id, hub_id, start),
+        )
+        run_id = cur.lastrowid
+        for farmer_id, product, quantity, unit in items:
+            conn.execute(
+                "INSERT INTO collection_items (run_id, farmer_id, product, quantity, unit) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (run_id, farmer_id, product, quantity, unit),
+            )
+
+        sla = _tightest_sla(conn, run_id)
+        status = "sla_breach" if sla is not None and duration_minutes > sla else "delivered"
+        delivery = (datetime.fromisoformat(start) + timedelta(minutes=duration_minutes))
+        conn.execute(
+            "UPDATE collection_runs SET delivery_time = ?, status = ? WHERE id = ?",
+            (delivery.isoformat(timespec="seconds"), status, run_id),
+        )
+        return run_id, status
+
+
 def check_vehicle_idle(vehicle_id: int, idle_speed_threshold_minutes: int = 10,
                         db_path: str = "ksc_demo.db") -> Optional[str]:
     """
@@ -114,14 +153,17 @@ def check_vehicle_idle(vehicle_id: int, idle_speed_threshold_minutes: int = 10,
     return None
 
 
-def daily_report(run_date: Optional[str] = None, db_path: str = "ksc_demo.db") -> list[dict]:
+def daily_report(db_path: str = "ksc_demo.db", date_from: Optional[str] = None,
+                  date_to: Optional[str] = None) -> list[dict]:
     """
-    Aggregate collected volume by hub and value chain for a given day
-    (defaults to today), plus a count of SLA breaches - the numbers a
-    daily ops standup, or a synced Google Sheet / Smartsheet, would want.
+    Aggregate collected volume by hub and value chain across a date range
+    (defaults to today only), plus a count of SLA breaches - the numbers
+    a daily ops standup, or a synced Google Sheet / Smartsheet, would
+    want.
     """
+    if date_from is None and date_to is None:
+        date_from = date_to = datetime.now().strftime("%Y-%m-%d")
     with connect(db_path) as conn:
-        date_filter = run_date or datetime.now().strftime("%Y-%m-%d")
         rows = conn.execute(
             """
             SELECT h.name AS hub, ci.product, ci.unit,
@@ -131,10 +173,11 @@ def daily_report(run_date: Optional[str] = None, db_path: str = "ksc_demo.db") -
             FROM collection_items ci
             JOIN collection_runs cr ON cr.id = ci.run_id
             JOIN hubs h ON h.id = cr.hub_id
-            WHERE cr.run_date = ?
+            WHERE (:date_from IS NULL OR cr.run_date >= :date_from)
+              AND (:date_to IS NULL OR cr.run_date <= :date_to)
             GROUP BY h.name, ci.product, ci.unit
             ORDER BY h.name, ci.product
             """,
-            (date_filter,),
+            {"date_from": date_from, "date_to": date_to},
         ).fetchall()
         return [dict(r) for r in rows]

@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Dashboard — KSC Collection Tracker{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
-{% block page_sub %}{{ summary.run_date }} · Songa e-mobility first-mile collection{% endblock %}
+{% block page_sub %}
+{% if summary.date_from == summary.date_to %}{{ summary.date_from }}{% else %}{{ summary.date_from or 'the beginning' }} to {{ summary.date_to or 'now' }}{% endif %}
+· Songa e-mobility first-mile collection
+{% endblock %}
 
 {% block topbar_actions %}
 {% if current_user_row.role == 'admin' %}
@@ -12,57 +15,114 @@
 {% endblock %}
 
 {% block content %}
-<div class="kpi-grid">
-  <div class="kpi-card">
-    <div class="icon-badge ink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></div>
-    <div class="value">{{ summary.total_runs }}</div>
-    <div class="label">Collection runs today</div>
+{% set range_label = "today" if (summary.date_from == summary.date_to and summary.date_from) else (summary.date_from or "the beginning") ~ " – " ~ (summary.date_to or "now") %}
+<form class="filter-bar" method="get">
+  <div class="filter-field">
+    <label for="date_from">From</label>
+    <input type="date" name="date_from" id="date_from" value="{{ summary.date_from or '' }}">
   </div>
-  <div class="kpi-card">
-    <div class="icon-badge ink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></div>
+  <div class="filter-field">
+    <label for="date_to">To</label>
+    <input type="date" name="date_to" id="date_to" value="{{ summary.date_to or '' }}">
+  </div>
+  <div class="filter-actions">
+    <button type="submit" class="btn secondary">Apply</button>
+    <a href="{{ url_for('dashboard') }}" class="btn secondary">Today</a>
+  </div>
+</form>
+
+<div class="kpi-grid">
+  <div class="kpi-card tint-blue kpi-trend">
+    <div class="kpi-trend-top">
+      <div class="icon-badge blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></div>
+      {% if trend_delta is not none %}
+      <span class="delta-chip {{ 'up' if trend_delta > 0 else ('down' if trend_delta < 0 else '') }}">
+        {{ '+' if trend_delta > 0 }}{{ trend_delta }} vs prior day
+      </span>
+      {% endif %}
+    </div>
+    <div class="value">{{ summary.total_runs }}</div>
+    <div class="label">Collection runs <span class="sub">{{ range_label }}</span></div>
+    <div class="sparkline-wrap"><canvas id="runsSparkline"></canvas></div>
+  </div>
+  <div class="kpi-card tint-green">
+    <div class="icon-badge green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></div>
     <div class="value">{{ summary.delivered }}</div>
     <div class="label">Delivered on time</div>
   </div>
-  <div class="kpi-card {{ 'warn' if summary.sla_breaches else '' }}">
-    <div class="icon-badge ink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>
+  <div class="kpi-card {{ 'warn tint-red' if summary.sla_breaches else '' }}">
+    <div class="icon-badge {{ 'red' if summary.sla_breaches else 'ink' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>
     <div class="value">{{ summary.sla_breaches }}</div>
     <div class="label">SLA breaches</div>
   </div>
-  <div class="kpi-card">
-    <div class="icon-badge ink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="6" width="15" height="12" rx="1"/><path d="M16 10h4l3 3v5h-7"/><circle cx="6" cy="19" r="2"/><circle cx="18.5" cy="19" r="2"/></svg></div>
+  <div class="kpi-card tint-purple">
+    <div class="icon-badge purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="6" width="15" height="12" rx="1"/><path d="M16 10h4l3 3v5h-7"/><circle cx="6" cy="19" r="2"/><circle cx="18.5" cy="19" r="2"/></svg></div>
     <div class="value">{{ summary.vehicles }}</div>
     <div class="label">Vehicles in fleet</div>
   </div>
-  <div class="kpi-card">
-    <div class="icon-badge ink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+  <div class="kpi-card tint-orange">
+    <div class="icon-badge orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
     <div class="value">{{ summary.hubs }}</div>
     <div class="label">Hubs / counties served</div>
   </div>
-  <div class="kpi-card">
-    <div class="icon-badge ink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+  <div class="kpi-card tint-blue">
+    <div class="icon-badge blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
     <div class="value">{{ summary.farmers }}</div>
     <div class="label">Registered farmers</div>
   </div>
 </div>
 
-<div class="grid-2">
+<div class="grid-3">
   <div class="panel">
-    <h2>Collection runs by hub <span class="sub">today</span></h2>
+    <h2>Collection runs by hub <span class="sub">{{ range_label }}</span></h2>
     <canvas id="hubChart"></canvas>
   </div>
   <div class="panel">
-    <h2>Run outcome mix <span class="sub">today</span></h2>
-    <canvas id="slaChart"></canvas>
-    <div class="chart-key" aria-hidden="false">
-      <div class="item"><span class="swatch green"></span><strong>{{ summary.delivered }}</strong>&nbsp;Delivered on time</div>
-      <div class="item"><span class="swatch red"></span><strong>{{ summary.sla_breaches }}</strong>&nbsp;SLA breach</div>
-      <div class="item"><span class="swatch orange"></span><strong>{{ summary.in_progress }}</strong>&nbsp;In progress</div>
+    <h2>Run outcome mix <span class="sub">{{ range_label }}</span></h2>
+    <div class="donut-wrap">
+      <canvas id="slaChart"></canvas>
+      <div class="donut-center">
+        <div class="big">{{ summary.total_runs }}</div>
+        <div class="small">Total runs</div>
+      </div>
+    </div>
+    <div class="donut-legend">
+      {% for row in outcome_mix %}
+      <div class="row">
+        <span class="dot {{ row.color }}"></span>
+        <span class="label">{{ row.label }}</span>
+        <span class="pct">{{ row.pct }}%</span>
+        <span class="value">{{ row.count }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="panel">
+    <h2>Collection mix by product <span class="sub">{{ range_label }}</span></h2>
+    <div class="donut-wrap">
+      <canvas id="productChart"></canvas>
+      <div class="donut-center">
+        <div class="big">{{ summary.total_runs }}</div>
+        <div class="small">Total runs</div>
+      </div>
+    </div>
+    <div class="donut-legend">
+      {% for row in product_mix %}
+      <div class="row">
+        <span class="dot {{ ['blue', 'purple', 'orange', 'green'][loop.index0 % 4] }}"></span>
+        <span class="label">{{ row.product|capitalize }}</span>
+        <span class="pct">{{ row.pct }}%</span>
+        <span class="value">{{ "%.1f"|format(row.quantity) }} {{ row.unit }}</span>
+      </div>
+      {% else %}
+      <div class="row"><span class="label">No collections in this range.</span></div>
+      {% endfor %}
     </div>
   </div>
 </div>
 
 <div class="panel">
-  <h2>Daily collection report <span class="sub">volume by hub &amp; value chain — see the full log under Collection Runs</span></h2>
+  <h2>Collection report <span class="sub">volume by hub &amp; value chain, {{ range_label }} — see the full log under Collection Runs</span></h2>
   <div class="table-scroll">
   <table>
     <thead>
@@ -79,7 +139,7 @@
         <td>{{ row.sla_breaches }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="6">No collections recorded for today.</td></tr>
+      <tr><td colspan="6">No collections recorded for this range.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -96,14 +156,24 @@
   const chartGreen = '#22c55e', chartOrange = '#f97316', chartRed = '#ef4444';
 
   // Text/grid/bar colors come from the CSS theme variables so they
-  // follow both the light/dark toggle and the ink palette.
+  // follow both the light/dark toggle and the ink/accent palette.
   function themeChartColors() {
     const s = getComputedStyle(document.documentElement);
     return {
       text: s.getPropertyValue('--chart-text').trim(),
       grid: s.getPropertyValue('--chart-grid').trim(),
-      ink: s.getPropertyValue('--ink').trim(),
+      highlight: s.getPropertyValue('--chart-highlight').trim(),
+      muted: s.getPropertyValue('--chart-bar-muted').trim(),
     };
+  }
+
+  // The busiest station's bar is called out in the accent color; the
+  // rest stay muted — draws the eye to what's actually notable today
+  // instead of every bar competing for attention.
+  function hubBarColors(hubData) {
+    const colors = themeChartColors();
+    const maxRuns = Math.max(...hubData.map(h => h.runs), 0);
+    return hubData.map(h => h.runs === maxRuns && maxRuns > 0 ? colors.highlight : colors.muted);
   }
 
   Chart.defaults.font.family = "'Inter', -apple-system, sans-serif";
@@ -114,7 +184,7 @@
     type: 'bar',
     data: {
       labels: hubData.map(h => h.hub),
-      datasets: [{ label: 'Runs', data: hubData.map(h => h.runs), backgroundColor: themeChartColors().ink, borderRadius: 6, maxBarThickness: 42 }]
+      datasets: [{ label: 'Runs', data: hubData.map(h => h.runs), backgroundColor: hubBarColors(hubData), borderRadius: 6, maxBarThickness: 42 }]
     },
     options: {
       responsive: true,
@@ -125,6 +195,44 @@
       }
     }
   });
+
+  // Recent-history sparkline on the "Collection runs" KPI card — plain
+  // line, no axes/ticks/tooltip, just enough shape to read as a trend
+  // at a glance (the reference dashboard's Balance-card treatment).
+  const trendData = {{ runs_trend|tojson }};
+  const chartBlue = getComputedStyle(document.documentElement).getPropertyValue('--chart-blue').trim();
+  const sparkCtx = document.getElementById('runsSparkline');
+  let sparkGradient = null;
+  if (sparkCtx) {
+    const g = sparkCtx.getContext('2d').createLinearGradient(0, 0, 0, 46);
+    g.addColorStop(0, chartBlue + '55');
+    g.addColorStop(1, chartBlue + '00');
+    sparkGradient = g;
+  }
+  const sparkChart = sparkCtx ? new Chart(sparkCtx, {
+    type: 'line',
+    data: {
+      labels: trendData.map(d => d.run_date),
+      datasets: [{
+        data: trendData.map(d => d.runs),
+        borderColor: chartBlue, backgroundColor: sparkGradient,
+        borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, pointHoverBackgroundColor: chartBlue,
+        tension: 0.35, fill: true,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          displayColors: false, padding: 6, titleFont: { size: 11 }, bodyFont: { size: 11 },
+          callbacks: { label: (ctx) => `${ctx.parsed.y} run${ctx.parsed.y === 1 ? '' : 's'}` }
+        }
+      },
+      scales: { x: { display: false }, y: { display: false } }
+    }
+  }) : null;
 
   const summary = {{ summary|tojson }};
   const slaChart = new Chart(document.getElementById('slaChart'), {
@@ -137,16 +245,36 @@
         borderWidth: 0
       }]
     },
-    options: { responsive: true, cutout: '65%', plugins: { legend: { display: false } } }
+    options: { responsive: true, cutout: '72%', plugins: { legend: { display: false } } }
+  });
+
+  // Same 4-color rotation as the .dot classes used in the legend list
+  // markup (blue, purple, orange, green), so canvas segments and their
+  // legend dots always match regardless of how many products there are.
+  const productColors = ['#2f6fed', '#a855f7', '#f97316', '#22c55e'];
+  const productData = {{ product_mix|tojson }};
+  const productChart = new Chart(document.getElementById('productChart'), {
+    type: 'doughnut',
+    data: {
+      labels: productData.map(p => p.product),
+      datasets: [{
+        data: productData.map(p => p.runs),
+        backgroundColor: productData.map((_, i) => productColors[i % productColors.length]),
+        borderWidth: 0
+      }]
+    },
+    options: { responsive: true, cutout: '72%', plugins: { legend: { display: false } } }
   });
 
   document.addEventListener('ksc-theme-change', () => {
     const colors = themeChartColors();
     Chart.defaults.color = colors.text;
     hubChart.options.scales.y.grid.color = colors.grid;
-    hubChart.data.datasets[0].backgroundColor = colors.ink;
+    hubChart.data.datasets[0].backgroundColor = hubBarColors(hubData);
     hubChart.update();
     slaChart.update();
+    productChart.update();
+    if (sparkChart) sparkChart.update();
   });
 </script>
 {% endblock %}

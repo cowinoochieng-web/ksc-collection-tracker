@@ -38,7 +38,7 @@ import collection_tracker as tracker
 import dashboard_data as data
 import permissions as perms
 from db import connect, init_db
-from main import run_demo_day
+from main import run_demo_day, backfill_history, simulate_next_day
 from seed_data import seed
 
 DB_PATH = "ksc_demo.db"
@@ -69,11 +69,17 @@ app.secret_key = _load_secret_key()
 
 
 def ensure_data():
-    """Seed and simulate a day if the DB doesn't exist yet."""
+    """Seed and simulate a history of days if the DB doesn't exist yet —
+    today (via run_demo_day, which deliberately backdates one run to
+    demonstrate the SLA-breach path) plus ~13 prior days of randomized
+    history, so the date-range filters have real spread to show on first
+    load. Never runs again once the DB exists — from then on, only
+    simulate_next_day() (the "Simulate new day" button) adds to it."""
     if not os.path.exists(DB_PATH):
         init_db(DB_PATH)
         seed(DB_PATH)
         run_demo_day(DB_PATH)
+        backfill_history(DB_PATH)
 
 
 def current_user():
@@ -177,12 +183,26 @@ def logout():
 def dashboard():
     ensure_data()
     station_id = current_station_id()
+    # No range in the URL defaults to "today" — the KPI cards read as a
+    # daily ops view unless the user deliberately widens the window.
+    date_from = request.args.get("date_from") or None
+    date_to = request.args.get("date_to") or None
+    summary = data.get_summary(DB_PATH, date_from=date_from, date_to=date_to, station_id=station_id)
+    report = tracker.daily_report(db_path=DB_PATH, date_from=date_from, date_to=date_to)
+    runs_trend = data.get_runs_trend(DB_PATH, station_id=station_id)
+    trend_delta = None
+    if len(runs_trend) >= 2:
+        trend_delta = runs_trend[-1]["runs"] - runs_trend[-2]["runs"]
     return render_template(
         "dashboard.html",
         active="dashboard",
-        summary=data.get_summary(DB_PATH, station_id=station_id),
-        runs_per_hub=data.get_runs_per_hub(DB_PATH, station_id=station_id),
-        report=tracker.daily_report(db_path=DB_PATH),
+        summary=summary,
+        runs_per_hub=data.get_runs_per_hub(DB_PATH, date_from=date_from, date_to=date_to, station_id=station_id),
+        report=report,
+        outcome_mix=data.summarize_outcomes(summary),
+        product_mix=data.summarize_by_product(report),
+        runs_trend=runs_trend,
+        trend_delta=trend_delta,
     )
 
 
@@ -206,19 +226,44 @@ def runs():
     station_id = current_station_id()
     effective = perms.effective_access(DB_PATH, current_user())
     filters = {
-        "hub": request.args.get("hub") or "",
-        "product": request.args.get("product") or "",
-        "status": request.args.get("status") or "",
-        "run_date": request.args.get("run_date") or "",
+        "hub": request.args.getlist("hub"),
+        "product": request.args.getlist("product"),
+        "status": request.args.getlist("status"),
+        "farmer": request.args.getlist("farmer"),
+        "date_from": request.args.get("date_from") or "",
+        "date_to": request.args.get("date_to") or "",
     }
-    rows = data.get_runs_filtered(
+    all_rows = data.get_runs_filtered(
         DB_PATH,
-        hub=filters["hub"] or None,
-        product=filters["product"] or None,
-        status=filters["status"] or None,
-        run_date=filters["run_date"] or None,
+        hubs=filters["hub"],
+        products=filters["product"],
+        statuses=filters["status"],
+        farmers=filters["farmer"],
+        date_from=filters["date_from"] or None,
+        date_to=filters["date_to"] or None,
         station_id=station_id,
     )
+
+    per_page = request.args.get("per_page", type=int, default=50)
+    if per_page not in (50, 100, 150):
+        per_page = 50
+    total = len(all_rows)
+    total_pages = max(1, -(-total // per_page))  # ceil division
+    page = min(max(request.args.get("page", type=int, default=1), 1), total_pages)
+    start = (page - 1) * per_page
+    rows = all_rows[start:start + per_page]
+
+    # Comparison charts only make sense once 2+ boxes are checked on a
+    # dimension — a single selection is just a filter, not a comparison.
+    compare_product = data.compare_by_product(
+        DB_PATH, filters["product"], date_from=filters["date_from"] or None,
+        date_to=filters["date_to"] or None, station_id=station_id,
+    ) if len(filters["product"]) >= 2 else []
+    compare_farmer = data.compare_by_farmer(
+        DB_PATH, filters["farmer"], date_from=filters["date_from"] or None,
+        date_to=filters["date_to"] or None, station_id=station_id,
+    ) if len(filters["farmer"]) >= 2 else []
+
     return render_template(
         "runs.html",
         active="runs",
@@ -227,6 +272,12 @@ def runs():
         options=data.get_filter_options(DB_PATH),
         can_log=perms.has_access(effective, "runs.log"),
         can_export=perms.has_access(effective, "runs.export"),
+        page=page,
+        per_page=per_page,
+        total=total,
+        total_pages=total_pages,
+        compare_product=compare_product,
+        compare_farmer=compare_farmer,
     )
 
 
@@ -297,14 +348,16 @@ def export_runs_csv():
     ensure_data()
     rows = data.get_runs_filtered(
         DB_PATH,
-        hub=request.args.get("hub") or None,
-        product=request.args.get("product") or None,
-        status=request.args.get("status") or None,
-        run_date=request.args.get("run_date") or None,
+        hubs=request.args.getlist("hub"),
+        products=request.args.getlist("product"),
+        statuses=request.args.getlist("status"),
+        farmers=request.args.getlist("farmer"),
+        date_from=request.args.get("date_from") or None,
+        date_to=request.args.get("date_to") or None,
         station_id=current_station_id(),
     )
     buf = io.StringIO()
-    fieldnames = ["id", "run_date", "vehicle", "hub", "products", "item_count",
+    fieldnames = ["id", "run_date", "vehicle", "hub", "products", "farmers", "item_count",
                   "start_time", "delivery_time", "status"]
     writer = csv.DictWriter(buf, fieldnames=fieldnames)
     writer.writeheader()
@@ -313,6 +366,60 @@ def export_runs_csv():
         buf.getvalue(),
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment; filename=collection_runs.csv"},
+    )
+
+
+# ---------- Farmers ("which client brought what") ----------
+
+@app.route("/farmers")
+@require_menu("farmers")
+def farmers():
+    ensure_data()
+    station_id = current_station_id()
+    effective = perms.effective_access(DB_PATH, current_user())
+    filters = {
+        "date_from": request.args.get("date_from") or "",
+        "date_to": request.args.get("date_to") or "",
+        "value_chain": request.args.get("value_chain") or "",
+    }
+    rows = data.get_farmer_report(
+        DB_PATH,
+        station_id=station_id,
+        date_from=filters["date_from"] or None,
+        date_to=filters["date_to"] or None,
+        value_chain=filters["value_chain"] or None,
+    )
+    return render_template(
+        "farmers.html",
+        active="farmers",
+        rows=rows,
+        filters=filters,
+        options=data.get_filter_options(DB_PATH),
+        can_export=perms.has_access(effective, "farmers.export"),
+    )
+
+
+@app.route("/farmers/export.csv")
+@require_menu("farmers.export")
+def export_farmers_csv():
+    ensure_data()
+    rows = data.get_farmer_report(
+        DB_PATH,
+        station_id=current_station_id(),
+        date_from=request.args.get("date_from") or None,
+        date_to=request.args.get("date_to") or None,
+        value_chain=request.args.get("value_chain") or None,
+    )
+    buf = io.StringIO()
+    fieldnames = ["id", "name", "station", "value_chain", "unit",
+                  "total_quantity", "collections", "last_collection"]
+    writer = csv.DictWriter(buf, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(rows)
+    return Response(
+        buf.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=farmer_report.csv"},
     )
 
 
@@ -326,15 +433,17 @@ def api_fleet():
 @app.route("/simulate", methods=["POST"])
 @login_required
 def simulate():
-    """Wipe and re-run a fresh simulated day, for the demo button. Admin-only —
-    it resets every station's data, not just the current user's."""
+    """Append one more simulated day on top of the existing history, for
+    the demo button. Admin-only — it affects every station's data, not
+    just the current user's. Deliberately does NOT wipe the database:
+    hubs/farmers/vehicles/users and every previously-simulated day stay
+    exactly as they were; only a new day's runs are added, with their
+    own randomized numbers."""
     if current_user()["role"] != "admin":
         abort(403)
-    if os.path.exists(DB_PATH):
-        os.remove(DB_PATH)
-    init_db(DB_PATH)
-    seed(DB_PATH)
-    run_demo_day(DB_PATH)
+    ensure_data()
+    new_date = simulate_next_day(DB_PATH)
+    flash(f"Simulated a new day of collections for {new_date}.", "success")
     return redirect(request.referrer or url_for("dashboard"))
 
 
