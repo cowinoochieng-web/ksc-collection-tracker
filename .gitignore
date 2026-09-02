@@ -4,3 +4,4 @@ __pycache__/
 daily_report.csv
 .flask_secret
 venv/
+.claude/
