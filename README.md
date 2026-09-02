@@ -1,9 +1,7 @@
 # First-Mile Collection & Fleet Dispatch Tracker
 
-A working prototype built to understand the operational problem behind
-Kisii Smart Community (KSC)'s **IT & Systems Developer** role, before
-applying — proof of understanding the domain, rather than just listing
-tools on a CV.
+A small working prototype built to understand the operational problem
+behind Kisii Smart Community and Songa Mobility.
 
 ![Sign-in screen](screenshots/login.jpg)
 
