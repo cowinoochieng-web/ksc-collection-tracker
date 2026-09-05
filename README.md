@@ -50,7 +50,7 @@ production, small enough to build and demo end to end.
 | Frontend | Jinja2 templates, vanilla JS, Chart.js (CDN) | No build step; keeps the whole stack `pip install`-and-go |
 | Maps | Leaflet + OpenStreetMap / Esri / OpenTopoMap tiles | Free, keyless tile sources — Streets / Satellite / Terrain / Dark layers with no API key to provision |
 | Auth & access control | Flask session cookies, custom RBAC (`permissions.py`) | Server-enforced role + per-user overrides + station-scoped data — see [How access control works](#how-access-control-works) |
-| ERPNext integration | `ksc_ops` REST API (`erpnext_client.py`), Frappe API key/secret auth, mock fallback | Pulls live data from a companion ERPNext/Frappe app — demonstrates the literal "systems integration" job requirement, not just two disconnected demos |
+| ERPNext integration | [`ksc-ops`](https://github.com/cowinoochieng-web/ksc-ops) REST API (`erpnext_client.py`), Frappe API key/secret auth, mock fallback | Pulls live data from a companion ERPNext/Frappe app — demonstrates the literal "systems integration" job requirement, not just two disconnected demos |
 
 ## How it works
 
@@ -256,9 +256,12 @@ preference on first visit.
 
 ## What I'd build next with real access
 
-- Replace the SQLite layer with ERPNext doctypes and Frappe server
-  scripts, so this logic runs inside the actual system of record rather
-  than alongside it.
+- This prototype's domain has already been rebuilt as real ERPNext
+  doctypes and Frappe server scripts in a companion app,
+  [`ksc-ops`](https://github.com/cowinoochieng-web/ksc-ops), bridged to
+  this dashboard via the ERPNext Sync page above. With real KSC access,
+  the next step is retiring this SQLite layer in favor of that system of
+  record entirely, rather than running both side by side.
 - Push the daily report to Google Sheets via the Sheets API, or into a
   Smartsheet workflow, instead of a local CSV.
 - Add a lightweight USSD flow (e.g. via Africa's Talking) for riders or
