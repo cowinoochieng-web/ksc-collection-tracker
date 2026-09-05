@@ -27,6 +27,7 @@ import os
 import secrets
 from functools import wraps
 
+from dotenv import load_dotenv
 from flask import (
     Flask, Response, abort, flash, g, jsonify, redirect, render_template,
     request, session, url_for,
@@ -36,10 +37,13 @@ from werkzeug.security import check_password_hash
 import admin_data as admin
 import collection_tracker as tracker
 import dashboard_data as data
+import erpnext_client as erp
 import permissions as perms
 from db import connect, init_db
 from main import run_demo_day, backfill_history, simulate_next_day
 from seed_data import seed
+
+load_dotenv()
 
 DB_PATH = "ksc_demo.db"
 
@@ -605,6 +609,23 @@ def user_edit(user_id):
     return render_template(
         "user_edit.html", active="users", target=target,
         station_options=admin.list_stations(DB_PATH), error=error,
+    )
+
+
+# ---------- ERPNext integration ----------
+
+@app.route("/integration")
+@require_menu("integration")
+def integration():
+    ensure_data()
+    client, is_live = erp.build_client()
+    return render_template(
+        "integration.html",
+        active="integration",
+        erp_summary=client.get_summary(),
+        erp_fleet=client.get_fleet_status(),
+        erp_live=is_live,
+        erpnext_url=os.environ.get("ERPNEXT_URL", erp.DEFAULT_URL),
     )
 
 

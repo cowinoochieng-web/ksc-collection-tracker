@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}ERPNext Sync — KSC Collection Tracker{% endblock %}
+{% block page_title %}ERPNext Integration{% endblock %}
+{% block page_sub %}Live data pulled from the ksc_ops ERPNext app via API key{% endblock %}
+
+{% block content %}
+<div class="flash {{ 'success' if erp_live else 'error' }}">
+  {% if erp_live %}
+    Connected to <strong>{{ erpnext_url }}</strong> — the figures below are live from the real ERPNext instance.
+  {% else %}
+    Not connected to ERPNext at <strong>{{ erpnext_url }}</strong> — showing mock data instead. This is expected
+    unless the companion <code>ksc_ops</code> ERPNext app is running (see README.md "Connecting to ERPNext").
+  {% endif %}
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card tint-blue">
+    <div class="icon-badge blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></div>
+    <div class="value">{{ erp_summary.total_runs }}</div>
+    <div class="label">Collection runs <span class="sub">{{ erp_summary.date_from }}</span></div>
+  </div>
+  <div class="kpi-card tint-green">
+    <div class="icon-badge green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></div>
+    <div class="value">{{ erp_summary.delivered }}</div>
+    <div class="label">Delivered on time</div>
+  </div>
+  <div class="kpi-card {{ 'warn tint-red' if erp_summary.sla_breaches else '' }}">
+    <div class="icon-badge {{ 'red' if erp_summary.sla_breaches else 'ink' }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>
+    <div class="value">{{ erp_summary.sla_breaches }}</div>
+    <div class="label">SLA breaches</div>
+  </div>
+  <div class="kpi-card tint-purple">
+    <div class="icon-badge purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="6" width="15" height="12" rx="1"/><path d="M16 10h4l3 3v5h-7"/><circle cx="6" cy="19" r="2"/><circle cx="18.5" cy="19" r="2"/></svg></div>
+    <div class="value">{{ erp_summary.vehicle_count }}</div>
+    <div class="label">Vehicles (ERPNext)</div>
+  </div>
+  <div class="kpi-card tint-orange">
+    <div class="icon-badge orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+    <div class="value">{{ erp_summary.station_count }}</div>
+    <div class="label">Stations (ERPNext)</div>
+  </div>
+  <div class="kpi-card tint-blue">
+    <div class="icon-badge blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+    <div class="value">{{ erp_summary.farmer_count }}</div>
+    <div class="label">Farmers (ERPNext)</div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Fleet status <span class="sub">from KSC Vehicle + Collection Run doctypes</span></h2>
+  <div class="table-scroll">
+  <table>
+    <thead>
+      <tr><th>Vehicle</th><th>Home station</th><th>Driver</th><th>Status</th><th>Run date</th></tr>
+    </thead>
+    <tbody>
+      {% for v in erp_fleet %}
+      <tr>
+        <td>{{ v.plate }}</td>
+        <td>{{ v.home_station or "—" }}</td>
+        <td>{{ v.driver or "—" }}</td>
+        <td><span class="pill {{ v.run_status|lower|replace(' ', '_') }}">{{ v.run_status }}</span></td>
+        <td>{{ v.run_date or "—" }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5">No vehicles found in ERPNext.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

@@ -46,6 +46,7 @@ MENU_TREE = [
     ("settings", "Settings", [
         ("settings.access", "Edit access control"),
     ]),
+    ("integration", "ERPNext Sync", []),
 ]
 
 

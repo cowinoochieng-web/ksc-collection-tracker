@@ -50,6 +50,7 @@ production, small enough to build and demo end to end.
 | Frontend | Jinja2 templates, vanilla JS, Chart.js (CDN) | No build step; keeps the whole stack `pip install`-and-go |
 | Maps | Leaflet + OpenStreetMap / Esri / OpenTopoMap tiles | Free, keyless tile sources — Streets / Satellite / Terrain / Dark layers with no API key to provision |
 | Auth & access control | Flask session cookies, custom RBAC (`permissions.py`) | Server-enforced role + per-user overrides + station-scoped data — see [How access control works](#how-access-control-works) |
+| ERPNext integration | `ksc_ops` REST API (`erpnext_client.py`), Frappe API key/secret auth, mock fallback | Pulls live data from a companion ERPNext/Frappe app — demonstrates the literal "systems integration" job requirement, not just two disconnected demos |
 
 ## How it works
 
@@ -70,6 +71,11 @@ production, small enough to build and demo end to end.
 - **Daily reporting** — collected volume aggregated by hub and value
   chain, printed to console and exported to CSV in the same shape that
   would sync to a Google Sheet, Smartsheet, or an ERPNext report via API.
+- **ERPNext sync** — the **ERPNext Sync** page pulls live counts and
+  fleet status from a separate, real ERPNext/Frappe app (`ksc_ops`) via
+  a whitelisted REST API, proving the two systems can actually talk to
+  each other. It degrades to clearly-labeled mock data when that
+  instance isn't running — see [Design choices](#design-choices).
 
 ### Design choices
 
@@ -96,6 +102,27 @@ would actually run this:
   export TRACCAR_URL="https://your-server"
   export TRACCAR_USER="you@example.com"
   export TRACCAR_PASSWORD="yourpassword"
+  ```
+
+- **The ERPNext client follows the same real+mock idiom, with one
+  deliberate difference.** A separate, real ERPNext/Frappe app
+  (`ksc_ops`) runs in a local WSL2 environment and exposes a few
+  whitelisted, read-only API methods behind a dedicated, least-privilege
+  "KSC API Reader" account (never the Administrator account) —
+  `erpnext_client.py` calls it with a Frappe API key/secret. Because the
+  realistic failure mode here is "the reviewer hasn't started WSL2" (not
+  "no account registered," as with Traccar's public demo server), the
+  client does a short-timeout reachability check before deciding whether
+  to use the real client or `MockERPNextClient`. **Most people cloning
+  this repo will see the mock/"not connected" state on the ERPNext Sync
+  page — that's expected**, not a bug: it's what happens when the
+  companion ERPNext instance isn't running. To point it at a real
+  instance, copy `.env.example` to `.env` and fill in:
+
+  ```
+  ERPNEXT_URL=http://ksc.localhost:8000
+  ERPNEXT_API_KEY=your-api-key
+  ERPNEXT_API_SECRET=your-api-secret
   ```
 
 ### How access control works
@@ -171,6 +198,10 @@ Sign-in accepts either the username or its `@ksc-demo.local` email.
 - **Settings → Access Control** — every menu and sub-menu as checkboxes
   per user, with an orange note wherever a user's access has been changed
   from their role default.
+- **ERPNext Sync** (admin only) — live counts and fleet status pulled
+  from the companion `ksc_ops` ERPNext app, or clearly-labeled mock data
+  if it isn't reachable. Requires the `ksc_ops` app running in WSL2 and a
+  `.env` with API credentials — see [Design choices](#design-choices).
 
 A sun/moon icon in the top right of every page toggles dark mode —
 theme-variable-driven, applies instantly with no page reload, remembers
